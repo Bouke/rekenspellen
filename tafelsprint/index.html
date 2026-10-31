@@ -151,15 +151,23 @@ function facts(op,bonus){
 }
 const keyOf=f=>f.op==='keer'?kKey(f.a,f.b):dKey(f.a,f.b);
 const med=a=>{if(!a||!a.length)return Infinity;const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
+/* Niveaus blijven staan: een fout zet alleen de reeks naar het volgende niveau op 0.
+   e = behaald niveau (0 = nog niets, 3 groen, 4 goud, 5 regenboog); s = reeks sinds laatste fout/promotie */
+const NEXT={0:{need:3,ms:5000,to:3},3:{need:7,ms:3500,to:4},4:{need:15,ms:2500,to:5}};
+function norm(s){
+  if(s.e===undefined){
+    s.lw=s.n>0&&s.s===0;
+    s.e=(s.s>=3&&med(s.t)<=5000)?3:0;
+    if(s.e){s.s=0;s.t=[];s.lw=false}
+  }
+  return s;
+}
 function level(key){
   const s=stats[key];
   if(!s||!s.n)return 0;
-  if(s.s===0)return 1;
-  const m=med(s.t);
-  if(s.s>=25&&m<=2500)return 5;
-  if(s.s>=10&&m<=3500)return 4;
-  if(s.s>=3&&m<=5000)return 3;
-  return 2;
+  norm(s);
+  if(s.e>=3)return s.e;
+  return s.lw?1:2;
 }
 const WEIGHT=[2.5,7,3.5,0.7,0.4,0.25];
 const greenKeer=()=>facts('keer',false).filter(f=>level(keyOf(f))>=3).length;
@@ -244,6 +252,7 @@ function home(focusSel){
       <div class="seg" id="maps"><button data-v="keer" aria-pressed="${opts.map==='keer'}">Keer</button><button data-v="delen" aria-pressed="${opts.map==='delen'}">Delen</button>${bonusOpen()?`<button data-v="bonus" aria-pressed="${opts.map==='bonus'}">11 en 12</button>`:''}</div></div>
     <div class="mapwrap">${mapHTML()}</div>
     <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, vlot)</span><span><i class="gold"></i>Goud (10× goed, extra vlot)</span><span><i class="rainbow"></i>Regenboog (25× goed, supervlot)</span></div>
+    <p class="muted" style="font-size:14px;margin:0">Een kleur die je hebt, blijf je houden. Een fout zet alleen de teller naar de volgende kleur weer op 0: na groen nog 7× goed voor goud, na goud nog 15× goed voor regenboog.</p>
   </section>
   <p class="io-open"><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{opts.mode=b.dataset.m;store('ts-opts',opts);home(`#modes [data-m="${b.dataset.m}"]`)});
@@ -337,9 +346,13 @@ function ask(){
   document.getElementById('fb').textContent='';document.getElementById('fb').className='fbline';
 }
 function record(key,ok,ms){
-  const s=stats[key]||{n:0,s:0,w:0,t:[]};
+  const s=norm(stats[key]||{n:0,s:0,w:0,t:[],e:0,lw:false});
   s.n++;
-  if(ok){s.s++;s.t=[...(s.t||[]),ms].slice(-10)}else{s.s=0;s.w++;s.t=[]}
+  if(ok){
+    s.lw=false;s.s++;s.t=[...(s.t||[]),ms].slice(-15);
+    const nx=NEXT[s.e];
+    if(nx&&s.s>=nx.need&&med(s.t.slice(-nx.need))<=nx.ms){s.e=nx.to;s.s=0;s.t=[]}
+  }else{s.s=0;s.w++;s.t=[];s.lw=true}
   stats[key]=s;
 }
 function submit(){
