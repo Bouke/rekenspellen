@@ -156,9 +156,48 @@ let VOICES=[];
 function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^nl/i.test(v.lang)).sort((a,b)=>score(b)-score(a))}catch(e){}}
 function score(v){let s=/^nl[-_]NL/i.test(v.lang)?2:1;if(/premium|enhanced|verbeterd/i.test(v.name+v.voiceURI))s+=4;if(/eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley/i.test(v.name))s-=4;return s}
 try{loadVoices();speechSynthesis.addEventListener('voiceschanged',loadVoices)}catch(e){}
-function say(text,queue){
+function sayTTS(text,queue){
   try{if(!queue)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=VOICES[0];u.lang=v?v.lang:'nl-NL';if(v)u.voice=v;u.rate=.9;u.pitch=1.1;speechSynthesis.speak(u)}catch(e){}
 }
+const numWord=n=>w(n);
+/* ===== Stem: vooraf opgenomen fragmenten (map ../audio), met terugval op de iPad-stem =====
+   Een zin is een lijst tokens: een tekstfragment (string), {n:getal} (getal midden in een zin)
+   of {q:getal} (getal aan het eind van een vraag, met vraagintonatie). */
+const AUDIO_BASE='../audio/';
+function fh(s){let h=0x811c9dc5;for(const c of s){h^=c.codePointAt(0);h=Math.imul(h,0x01000193)>>>0}return h.toString(16).padStart(8,'0')}
+const tokId=t=>typeof t==='string'?'f_'+fh(t):(t.q!=null?'q'+t.q:'n'+t.n);
+const tokText=t=>typeof t==='string'?t:(t.q!=null?numWord(t.q)+'?':numWord(t.n));
+const toksText=ts=>ts.map(tokText).join(' ');
+let ACX=null;const BUFS=new Map();let GEN=0,END_AT=0,SRCS=[];
+function actx(){try{if(!ACX)ACX=new (window.AudioContext||window.webkitAudioContext)();if(ACX.state==='suspended')ACX.resume()}catch(e){}return ACX}
+function trimBuf(b){
+  const d=b.getChannelData(0),thr=0.01;let s=0,e=d.length-1;
+  while(s<e&&Math.abs(d[s])<thr)s++;while(e>s&&Math.abs(d[e])<thr)e--;
+  s=Math.max(0,s-Math.floor(b.sampleRate*.02));e=Math.min(d.length-1,e+Math.floor(b.sampleRate*.04));
+  const out=ACX.createBuffer(1,Math.max(1,e-s+1),b.sampleRate);out.copyToChannel(d.subarray(s,e+1),0);return out;
+}
+function loadBuf(id){
+  if(BUFS.has(id))return BUFS.get(id);
+  const p=fetch(AUDIO_BASE+id+'.m4a').then(r=>{if(!r.ok)throw new Error('ontbreekt');return r.arrayBuffer()})
+    .then(ab=>new Promise((res,rej)=>actx().decodeAudioData(ab,res,rej))).then(trimBuf);
+  BUFS.set(id,p);p.catch(()=>BUFS.delete(id));return p;
+}
+function prefetch(tokens){try{tokens.forEach(t=>loadBuf(tokId(t)).catch(()=>{}))}catch(e){}}
+function stopAll(){GEN++;SRCS.forEach(s=>{try{s.stop()}catch(e){}});SRCS=[];END_AT=0;try{speechSynthesis.cancel()}catch(e){}}
+async function speak(tokens,queue){
+  if(!queue)stopAll();const my=GEN;
+  let list;
+  try{list=await Promise.all(tokens.map(t=>loadBuf(tokId(t))))}
+  catch(e){if(my===GEN)sayTTS(toksText(tokens),queue);return}
+  if(my!==GEN)return;
+  const a=actx();if(!a){sayTTS(toksText(tokens),queue);return}
+  let t=Math.max(a.currentTime+.05,END_AT);
+  list.forEach((b,i)=>{const s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.start(t);SRCS.push(s);
+    t+=b.duration+(i<list.length-1?.07:0)});
+  END_AT=t+.25;
+}
+function say(x,queue){speak(Array.isArray(x)?x:[x],queue)}
+
 
 /* ============ opslag ============ */
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
@@ -180,7 +219,7 @@ function objsHTML(t,n,cls='',start=0){return Array.from({length:n},(_,i)=>`<butt
 const GAMES={
   tel(t,L){
     const n=R(Math.min(3,L.cnt),L.cnt);
-    return{ans:n,opts:opts3(n,1,L.cnt+2),speak:`Hoeveel ${t.noun[1]} zijn het? Tik ze maar aan om te tellen.`,
+    return{ans:n,opts:opts3(n,1,L.cnt+2),speak:[`Hoeveel ${t.noun[1]} zijn het?`,'Tik ze maar aan om te tellen.'],
       scene:`<div class="objs" id="objs">${objsHTML(t,n)}</div>`,countable:true,
       hint:()=>countAll()};
   },
@@ -193,33 +232,33 @@ const GAMES={
   },
   cijfer(t,L){
     const n=R(0,L.num),o=new Set([n]);while(o.size<(L.num>10?4:3))o.add(R(0,L.num));
-    return{ans:n,opts:shuffle([...o]),speak:`Waar staat ${w(n)}?`,
-      scene:`<div class="cloud" aria-hidden="true">👂</div>`,hint:()=>say(`Zoek ${w(n)}.`)};
+    return{ans:n,opts:shuffle([...o]),speak:['Waar staat',{q:n}],
+      scene:`<div class="cloud" aria-hidden="true">👂</div>`,hint:()=>say(['Zoek',{n:n}])};
   },
   meer(t,L){
     const most=Math.random()<.5,eq=Math.random()<.18;
     let a=R(1,Math.min(L.cnt,10)),b=eq?a:R(1,Math.min(L.cnt,10));while(!eq&&b===a)b=R(1,Math.min(L.cnt,10));
     const ans=eq?'=':(most?(a>b?'L':'R'):(a<b?'L':'R'));
     return{ans,groups:[a,b],speak:most?`Waar zijn de meeste ${t.noun[1]}? Of zijn het er evenveel?`:`Waar zijn de minste ${t.noun[1]}? Of zijn het er evenveel?`,
-      scene:`<div class="cloud" aria-hidden="true">${t.e}🤔</div>`,hint:()=>say(`Tel ze allebei maar. Links ${w(a)}, rechts ${w(b)}.`)};
+      scene:`<div class="cloud" aria-hidden="true">${t.e}🤔</div>`,hint:()=>say(['Tel ze allebei maar.','Links',{n:a},'rechts',{n:b}])};
   },
   erna(t,L){
     const k=pick(['na','voor','tussen']);const n=R(k==='voor'?1:0,L.seq-(k==='na'?1:0));
     let cards,ans,txt;
-    if(k==='na'){const s=Math.max(0,n-1);cards=[s,s+1,'?'];ans=s+2;txt=`Welk getal komt na ${w(s+1)}?`}
-    else if(k==='voor'){const s=Math.max(1,n);cards=['?',s,s+1];ans=s-1;txt=`Welk getal komt voor ${w(s)}?`}
-    else{const s=Math.max(0,Math.min(n,L.seq-2));cards=[s,'?',s+2];ans=s+1;txt=`Welk getal hoort tussen ${w(s)} en ${w(s+2)}?`}
+    if(k==='na'){const s=Math.max(0,n-1);cards=[s,s+1,'?'];ans=s+2;txt=['Welk getal komt na',{q:s+1}]}
+    else if(k==='voor'){const s=Math.max(1,n);cards=['?',s,s+1];ans=s-1;txt=['Welk getal komt voor',{q:s}]}
+    else{const s=Math.max(0,Math.min(n,L.seq-2));cards=[s,'?',s+2];ans=s+1;txt=['Welk getal hoort tussen',{n:s},'en',{q:s+2}]}
     if(ans>L.seq||ans<0)return GAMES.erna(t,L);
     return{ans,opts:opts3(ans,0,L.seq),speak:txt,
       scene:`<div class="cards">${cards.map(c=>`<div class="card${c==='?'?' q':''}">${c}</div>`).join('')}</div>`,
-      hint:()=>say('Tel maar hardop mee: '+[...Array(ans+1).keys()].slice(Math.max(0,ans-3)).map(w).join(', ')+'.')};
+      hint:()=>say(['Tel maar hardop mee:',...[...Array(ans+1).keys()].slice(Math.max(0,ans-3)).map(x=>({n:x}))])};
   },
   erbij(t,L){
     const plus=Math.random()<.55;let a,b;
     if(plus){a=R(1,L.sum-1);b=R(1,Math.min(5,L.sum-a))}else{a=R(2,L.sum);b=R(1,Math.min(5,a-1))}
     const ans=plus?a+b:a-b;
-    const story=plus?`Er ${a===1?'is':'zijn'} ${w(a)} ${nn(t,a)}. Er ${b===1?'komt':'komen'} er ${w(b)} bij. Hoeveel ${t.noun[1]} zijn het nu?`
-                    :`Er ${a===1?'is':'zijn'} ${w(a)} ${nn(t,a)}. Er ${b===1?'gaat':'gaan'} er ${w(b)} weg. Hoeveel ${t.noun[1]} zijn er nog?`;
+    const story=[a===1?'Er is':'Er zijn',{n:a},`${nn(t,a)}.`,plus?(b===1?'Er komt er':'Er komen er'):(b===1?'Er gaat er':'Er gaan er'),{n:b},
+      plus?'bij.':'weg.',plus?`Hoeveel ${t.noun[1]} zijn het nu?`:`Hoeveel ${t.noun[1]} zijn er nog?`];
     return{ans,opts:opts3(ans,0,L.sum+2),speak:story,anim:{plus,a,b},
       scene:`<div class="objs" id="objs">${objsHTML(t,a)}</div>`,countable:true,
       hint:()=>countAll()};
@@ -229,7 +268,7 @@ const GAMES={
     const n=R(3,L.split),k=R(1,n-1),ans=n-k,sz=Math.min(objSize(n),60);
     const objs=(m,cls='')=>Array.from({length:m},()=>`<span class="obj ${cls}" style="font-size:${sz}px">${t.e}</span>`).join('');
     return{ans,opts:opts3(ans,0,n),
-      speak:`Hier zijn ${w(n)} ${t.noun[1]}. ${w(k).replace(/^./,c=>c.toUpperCase())} ${k===1?'gaat':'gaan'} in het mandje. De rest verstopt zich onder de wolk. Hoeveel ${t.noun[1]} zitten er onder de wolk?`,
+      speak:['Hier zijn',{n:n},`${t.noun[1]}.`,{n:k},k===1?'gaat in het mandje.':'gaan in het mandje.','De rest verstopt zich onder de wolk.',`Hoeveel ${t.noun[1]} zitten er onder de wolk?`],
       scene:`<div class="tree">
         <div class="total" id="total"><span class="num">${n}</span><div class="objs">${objs(n)}</div></div>
         <svg class="branches" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M200 0 L90 60 M200 0 L310 60" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="none"/></svg>
@@ -253,6 +292,9 @@ const GAMES={
   }
 };
 function diceHTML(a,b){return `<div class="dice">${die(a)}${b?die(b):''}</div>`}
+const PRAISE=['Goed zo!','Super!','Knap hoor!','Hoera!','Wat goed!','Jaaa!'],OOPS=['Bijna! Probeer het nog een keer.','Oeps! Nog een keer proberen?'];
+const LEVELUP='Jij wordt steeds slimmer! Het wordt nu een beetje moeilijker.',STICKER='Wauw! Je hebt een nieuwe sticker verdiend!';
+const STATIC_VOICE=[...PRAISE,...OOPS,LEVELUP,STICKER,'Ze zijn evenveel!','Kijk, deze was het!','Kijk, tel ze maar!','Het is','Zoek','Tel ze allebei maar.','Links','rechts','Tel maar hardop mee:'];
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 const die=n=>`<div class="die" aria-label="${n}">${Array.from({length:9},(_,i)=>`<i class="${PIPS[n].includes(i)?'on':''}"></i>`).join('')}</div>`;
 function showDice(a,b,ms){const f=document.getElementById('flits');if(!f)return;f.innerHTML=diceHTML(a,b);clearTimeout(S&&S.flashT);S.flashT=setTimeout(()=>{if(f.isConnected)f.innerHTML='<div class="cloud">🙈</div><button class="iconbtn" id="peek" aria-label="Nog een keer kijken" style="margin:auto">👀</button>';const p=document.getElementById('peek');if(p)p.onclick=()=>showDice(a,b,1600)},ms)}
@@ -263,7 +305,7 @@ function typesFor(level){return level===1?['tel','flits','cijfer','meer','erna',
 const app=document.getElementById('app');
 let S=null;
 function home(){
-  S=null;try{speechSynthesis.cancel()}catch(e){}
+  S=null;stopAll();
   const L=LEVELS[st.level];
   app.innerHTML=`
   <header style="display:flex;flex-direction:column;gap:6px">
@@ -273,7 +315,7 @@ function home(){
   <section class="book"><div class="small muted">Stickerboek · ${st.stickers.length}</div>
     <div class="stickers">${st.stickers.length?st.stickers.slice(-40).map(s=>`<span>${s}</span>`).join(''):'<span class="empty">Speel een rondje en verdien je eerste sticker!</span>'}</div></section>
   <section class="parent"><span>Voor ouders · niveau:</span>${[1,2,3,4].map(n=>`<button data-lv="${n}" aria-pressed="${st.level===n}">${LEVELS[n].name}</button>`).join('')}<span>(gaat vanzelf omhoog of omlaag)</span></section>`;
-  app.querySelectorAll('.theme').forEach(b=>b.onclick=()=>{ac();start(+b.dataset.t)});
+  app.querySelectorAll('.theme').forEach(b=>b.onclick=()=>{ac();actx();start(+b.dataset.t)});
   app.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{st.level=+b.dataset.lv;st.hist=[];save();home()});
 }
 function start(ti){
@@ -300,19 +342,20 @@ function ask(queue){
   if(q.flash)showDice(q.flash.a,q.flash.b,2200);
   if(q.anim)runAnim(q.anim);
   if(q.after)q.after();
+  prefetch(q.speak);
   say(q.speak,queue);
 }
 function setupCount(){
   S.counted=0;
   document.getElementById('objs').onclick=e=>{
     const o=e.target.closest('.obj');if(!o||o.classList.contains('counted')||o.classList.contains('away'))return;
-    S.counted++;o.classList.add('counted');o.insertAdjacentHTML('beforeend',`<span class="badge">${S.counted}</span>`);say(w(S.counted));tone(500+S.counted*30,0,.12,'sine',.08);
+    S.counted++;o.classList.add('counted');o.insertAdjacentHTML('beforeend',`<span class="badge">${S.counted}</span>`);say([{n:S.counted}]);tone(500+S.counted*30,0,.12,'sine',.08);
   };
 }
 function countAll(){
   const os=[...document.querySelectorAll('#objs .obj:not(.away)')];
   os.forEach(o=>{o.classList.remove('counted');const b=o.querySelector('.badge');if(b)b.remove()});S.counted=0;
-  os.forEach((o,i)=>setTimeout(()=>{if(!o.isConnected)return;S.counted=i+1;o.classList.add('counted');o.insertAdjacentHTML('beforeend',`<span class="badge">${i+1}</span>`);say(w(i+1))},i*700));
+  os.forEach((o,i)=>setTimeout(()=>{if(!o.isConnected)return;S.counted=i+1;o.classList.add('counted');o.insertAdjacentHTML('beforeend',`<span class="badge">${i+1}</span>`);say([{n:i+1}])},i*700));
 }
 function runAnim(an){
   const box=document.getElementById('objs');S.locked=true;
@@ -335,16 +378,16 @@ function answer(b){
     S.locked=true;if(S.tries===0){S.good++;st.hist.push(1)}else st.hist.push(0);
     b.classList.add('right');chime();if(S.t.farts||Math.random()<.12)setTimeout(fart,250);
     burst([S.t.e,'⭐','✨','💖']);
-    say(pick(['Goed zo!','Super!','Knap hoor!','Hoera!','Wat goed!','Jaaa!']));
+    say(pick(PRAISE));
     setTimeout(next,1700);
   }else{
     S.tries++;b.classList.add('wrong');boop();
-    if(S.tries===1){say(pick(['Bijna! Probeer het nog een keer.','Oeps! Nog een keer proberen?']));setTimeout(()=>q.hint&&q.hint(),900)}
+    if(S.tries===1){say(pick(OOPS));setTimeout(()=>q.hint&&q.hint(),900)}
     else{
       S.locked=true;st.hist.push(0);
       const r=[...document.querySelectorAll('.ans')].find(x=>x.dataset.a===String(q.ans));
       if(r)r.classList.add('right','glow');
-      say(q.ans==='='?'Ze zijn evenveel!':q.ans==='L'||q.ans==='R'?'Kijk, deze was het!':`Het is ${w(q.ans)}!`);
+      say(q.ans==='='?'Ze zijn evenveel!':q.ans==='L'||q.ans==='R'?'Kijk, deze was het!':['Het is',{n:q.ans}]);
       setTimeout(next,2400);
     }
   }
@@ -358,7 +401,7 @@ function adapt(){
   st.hist=st.hist.slice(-12);let msg='';
   if(st.hist.length>=10){
     const ok=st.hist.slice(-10).reduce((a,b)=>a+b,0);
-    if(ok>=8&&st.level<4){st.level++;st.hist=[];msg='Jij wordt steeds slimmer! Het wordt nu een beetje moeilijker.'}
+    if(ok>=8&&st.level<4){st.level++;st.hist=[];msg=LEVELUP}
     else if(ok<=3&&st.level>1){st.level--;st.hist=[];msg=''}
   }
   return msg;
@@ -376,13 +419,13 @@ function reward(){
     </div>
   </section>`;
   burst([sticker,'✨','💨','⭐']);fart();setTimeout(fart,700);
-  say(`Wauw! Je hebt een nieuwe sticker verdiend!`);if(msg)say(msg,true);
+  say(STICKER);if(msg)say(msg,true);
   const ti=S.ti;
   document.getElementById('again').onclick=()=>start(ti);
   document.getElementById('homeb').onclick=home;
 }
 home();
-window.__test={GAMES,LEVELS,THEMES,typesFor};
+window.__test={GAMES,LEVELS,THEMES,typesFor,STATIC_VOICE,tokId,tokText};
 })();
 </script>
 

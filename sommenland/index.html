@@ -320,13 +320,15 @@ function qPlusMin(d,w,story){
     const nn=n=>n===1?w.noun[0]:w.noun[1];
     if(kind==='vgl'&&plus){ /* aanvullen: hoeveel nog erbij? */
       q.story=`${w.wie[0]} heeft ${a} ${nn(a)}. Hoeveel ${w.noun[1]} moet ${w.wie[0]} er nog bij krijgen om er ${c} te hebben?`;
+      q.voice=[`${w.wie[0]} heeft`,{n:a},`${nn(a)}.`,`Hoeveel ${w.noun[1]} moet ${w.wie[0]} er nog bij krijgen om er`,{n:c},'te hebben?'];
       q.ans=b;q.help=useLijn(d)?{kind:'lijn',start:a,target:c,gapLabel:'+ ?'}:{kind:'rek',segs:[[a,'a'],[b,'todo']]};
       q.explain=`Van ${a} naar ${c} is ${b}.<br>${c} ${MINUS} ${a} = ${b}`;
     }else if(kind==='vgl'){ /* vergelijken: hoeveel meer? */
       q.story=`${w.wie[0]} heeft ${a} ${nn(a)}. ${w.wie[1]} heeft er ${b}. Hoeveel ${w.noun[1]} heeft ${w.wie[0]} meer?`;
+      q.voice=[`${w.wie[0]} heeft`,{n:a},`${nn(a)}.`,`${w.wie[1]} heeft er`,{n:b},'.',`Hoeveel ${w.noun[1]} heeft ${w.wie[0]} meer?`].filter(x=>x!=='.');
       q.help=useLijn(d)?{kind:'lijn',start:b,target:a,gapLabel:'+ ?'}:{kind:'rek',segs:[[b,'a'],[a-b,'todo']]};
       q.explain=`Het verschil tussen ${a} en ${b}:<br>${a} ${MINUS} ${b} = ${c}`;
-    }else q.story=pick(plus?w.plus:w.min)(a,b);
+    }else{const tpl=pick(plus?w.plus:w.min);q.story=tpl(a,b);q.voice=tplTokens(tpl,a,b)}
   }
   else q.parts=[a,op,b,'=','?'];
   return q;
@@ -413,32 +415,76 @@ function woord(n){
   const ew=e===1?'een':NUM[e];
   return ew+(ew.endsWith('e')?'ën':'en')+TENS[t];
 }
-function speakText(q){
-  if(q.story)return q.story.replace(/\d+/g,m=>woord(+m));
-  const w=p=>p==='+'?'plus':p===MINUS?'min':p==='='?'is':p==='?'?'hoeveel':woord(+p);
-  const P=q.parts;
-  let zin;
-  if(P[3]==='='&&P[4]==='?')zin=`Hoeveel is ${w(P[0])} ${w(P[1])} ${w(P[2])}?`;
-  else zin=P.map(w).join(' ')+'?';
-  return zin.charAt(0).toUpperCase()+zin.slice(1);
+/* Verhaaltje opdelen in tekstfragmenten rond de getallen */
+function tplTokens(tpl,a,b){
+  const raw=tpl('\u0001','\u0002'),out=[];
+  raw.split(/(\u0001|\u0002)/).forEach(p=>{
+    if(p==='\u0001')out.push({n:a});else if(p==='\u0002')out.push({n:b});
+    else{const t=p.replace(/^\s*[.,]\s*/,'').trim();if(t)out.push(t)}
+  });
+  return out;
 }
-/* Kies de mooiste Nederlandse stem: Premium/Verbeterd/Siri boven de standaardstem, grappige stemmen onderaan. */
+/* Som als zin: "Hoeveel is acht plus vijf?" */
+function voiceOf(q){
+  if(q.voice)return q.voice;
+  const P=q.parts,op=x=>x==='+'?'plus':'min';
+  if(P[3]==='='&&P[4]==='?')return['Hoeveel is',{n:P[0]},op(P[1]),{q:P[2]}];
+  if(P[1]==='=')return[{n:P[0]},'is',{n:P[2]},op(P[3]),'hoeveel?'];
+  if(P[2]==='?')return[{n:P[0]},op(P[1]),'hoeveel is',{q:P[4]}];
+  return['Hoeveel',op(P[1]),{n:P[2]},'is',{q:P[4]}];
+}
+const numWord=woord;
+const RESULT_MSGS=['Alles in één keer goed!','Wat goed gedaan!','Goed geoefend!','Nog een keer proberen?'];
+function sayTTS(text,queue){
+  try{if(!queue)speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=VOICES[0];u.lang=v?v.lang:'nl-NL';if(v)u.voice=v;u.rate=.92;speechSynthesis.speak(u)}catch(e){}
+}
 let VOICES=[];
 function voiceScore(v){
   const id=v.name+' '+v.voiceURI;let s=0;
   if(/^nl[-_]NL/i.test(v.lang))s+=2;else if(/^nl/i.test(v.lang))s+=1;
   if(/premium/i.test(id))s+=6;else if(/enhanced|verbeterd|natural|neural/i.test(id))s+=4;
-  if(/siri/i.test(id))s+=5;
   if(/eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley|oma|opa/i.test(v.name))s-=4;
   return s;
 }
 function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^nl/i.test(v.lang)).sort((a,b)=>voiceScore(b)-voiceScore(a))}catch(e){VOICES=[]}}
-const voiceLabel=v=>v.name+(/^nl[-_]BE/i.test(v.lang)?' (Vlaams)':'');
-function curVoice(){return VOICES.find(v=>v.voiceURI===opts.voice)||VOICES[0]||null}
-try{loadVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const n=VOICES.length;loadVoices();})}catch(e){}
-function say(text){
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=curVoice();u.lang=v?v.lang:'nl-NL';if(v)u.voice=v;u.rate=.92;speechSynthesis.speak(u)}catch(e){}
+try{loadVoices();speechSynthesis.addEventListener('voiceschanged',loadVoices)}catch(e){}
+/* ===== Stem: vooraf opgenomen fragmenten (map ../audio), met terugval op de iPad-stem =====
+   Een zin is een lijst tokens: een tekstfragment (string), {n:getal} (getal midden in een zin)
+   of {q:getal} (getal aan het eind van een vraag, met vraagintonatie). */
+const AUDIO_BASE='../audio/';
+function fh(s){let h=0x811c9dc5;for(const c of s){h^=c.codePointAt(0);h=Math.imul(h,0x01000193)>>>0}return h.toString(16).padStart(8,'0')}
+const tokId=t=>typeof t==='string'?'f_'+fh(t):(t.q!=null?'q'+t.q:'n'+t.n);
+const tokText=t=>typeof t==='string'?t:(t.q!=null?numWord(t.q)+'?':numWord(t.n));
+const toksText=ts=>ts.map(tokText).join(' ');
+let ACX=null;const BUFS=new Map();let GEN=0,END_AT=0,SRCS=[];
+function actx(){try{if(!ACX)ACX=new (window.AudioContext||window.webkitAudioContext)();if(ACX.state==='suspended')ACX.resume()}catch(e){}return ACX}
+function trimBuf(b){
+  const d=b.getChannelData(0),thr=0.01;let s=0,e=d.length-1;
+  while(s<e&&Math.abs(d[s])<thr)s++;while(e>s&&Math.abs(d[e])<thr)e--;
+  s=Math.max(0,s-Math.floor(b.sampleRate*.02));e=Math.min(d.length-1,e+Math.floor(b.sampleRate*.04));
+  const out=ACX.createBuffer(1,Math.max(1,e-s+1),b.sampleRate);out.copyToChannel(d.subarray(s,e+1),0);return out;
 }
+function loadBuf(id){
+  if(BUFS.has(id))return BUFS.get(id);
+  const p=fetch(AUDIO_BASE+id+'.m4a').then(r=>{if(!r.ok)throw new Error('ontbreekt');return r.arrayBuffer()})
+    .then(ab=>new Promise((res,rej)=>actx().decodeAudioData(ab,res,rej))).then(trimBuf);
+  BUFS.set(id,p);p.catch(()=>BUFS.delete(id));return p;
+}
+function prefetch(tokens){try{tokens.forEach(t=>loadBuf(tokId(t)).catch(()=>{}))}catch(e){}}
+function stopAll(){GEN++;SRCS.forEach(s=>{try{s.stop()}catch(e){}});SRCS=[];END_AT=0;try{speechSynthesis.cancel()}catch(e){}}
+async function speak(tokens,queue){
+  if(!queue)stopAll();const my=GEN;
+  let list;
+  try{list=await Promise.all(tokens.map(t=>loadBuf(tokId(t))))}
+  catch(e){if(my===GEN)sayTTS(toksText(tokens),queue);return}
+  if(my!==GEN)return;
+  const a=actx();if(!a){sayTTS(toksText(tokens),queue);return}
+  let t=Math.max(a.currentTime+.05,END_AT);
+  list.forEach((b,i)=>{const s=a.createBufferSource();s.buffer=b;s.connect(a.destination);s.start(t);SRCS.push(s);
+    t+=b.duration+(i<list.length-1?.07:0)});
+  END_AT=t+.25;
+}
+function say(x,queue){speak(Array.isArray(x)?x:[x],queue)}
 
 /* ================= opslag ================= */
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
@@ -468,7 +514,7 @@ function meterHTML(wi,counts,o){
 }
 
 function home(){
-  S=null;try{speechSynthesis.cancel()}catch(e){}
+  S=null;stopAll();
   document.documentElement.style.setProperty('--acc','var(--w2)');
   const total=Object.values(stars).reduce((a,b)=>a+b,0);
   app.innerHTML=`
@@ -495,6 +541,7 @@ function home(){
 }
 
 function start(wi,li){
+  actx();
   setAcc(wi);last={wi,li};
   S={wi,li,i:0,res:[],tries:0,mistakes:0,q:makeQ(wi,li),done:false,val:'',pop:-1,help:false};
   play();window.scrollTo(0,0);
@@ -527,11 +574,12 @@ function play(){
   </section>`;
   S.pop=-1;
   document.getElementById('back').onclick=home;
-  document.getElementById('spk').onclick=()=>say(speakText(q));
+  document.getElementById('spk').onclick=()=>{actx();say(voiceOf(q))};
   document.getElementById('helpb').onclick=()=>{S.help=!S.help;document.getElementById('helpbox').hidden=!S.help};
   document.getElementById('pad').onclick=e=>{const b=e.target.closest('button');if(b)key(b.dataset.k)};
   renderSlot();
-  if(opts.read)setTimeout(()=>{if(S&&S.q===q)say(speakText(q))},250);
+  prefetch(voiceOf(q));
+  if(opts.read)setTimeout(()=>{if(S&&S.q===q)say(voiceOf(q))},250);
 }
 function renderSlot(){
   const s=document.getElementById('slot');if(!s)return;
@@ -586,7 +634,7 @@ function next(){
   S.q=makeQ(S.wi,S.li);S.tries=0;S.done=false;S.val='';play();
 }
 function result(){
-  try{speechSynthesis.cancel()}catch(e){}
+  stopAll();
   const good=S.res.filter(Boolean).length;
   const st=good===QN&&S.mistakes===0?3:good>=QN-2?2:good>=QN/2?1:0;
   const key=K(S.wi,S.li);
@@ -681,7 +729,7 @@ function ioHide(){
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#io-open'))ioShow()});
 
 home();
-window.__test={plusPair,minPair,jumpsFor,makeQ,lijnSVG,rekHTML,say,voices:()=>VOICES};
+window.__test={plusPair,minPair,jumpsFor,makeQ,lijnSVG,rekHTML,say,voices:()=>VOICES,voiceOf,tokId,tokText,RESULT_MSGS,WORLDS,LEVELS};
 })();
 </script>
 
