@@ -48,6 +48,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .score{display:inline-flex;gap:8px;align-items:center;font-weight:700;background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:4px 12px}
 .toggle{display:inline-flex;align-items:center;gap:8px;font-weight:700;background:var(--panel);border:2px solid var(--line);border-radius:8px;padding:4px 12px;color:var(--ink)}
 .toggle[aria-pressed="true"]{border-color:var(--good)}
+.toggle select{font:inherit;font-weight:400;border:0;background:transparent;color:var(--ink);max-width:220px}
 
 /* worlds */
 .worlds{display:grid;grid-template-columns:1fr;gap:16px}
@@ -344,11 +345,22 @@ function speakText(q){
   else zin=P.map(w).join(' ')+'?';
   return zin.charAt(0).toUpperCase()+zin.slice(1);
 }
-let nlVoice=null;
-function pickVoice(){try{const vs=speechSynthesis.getVoices();nlVoice=vs.find(v=>/^nl[-_]NL/i.test(v.lang))||vs.find(v=>/^nl/i.test(v.lang))||null}catch(e){}}
-try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice}catch(e){}
+/* Kies de mooiste Nederlandse stem: Premium/Verbeterd/Siri boven de standaardstem, grappige stemmen onderaan. */
+let VOICES=[];
+function voiceScore(v){
+  const id=v.name+' '+v.voiceURI;let s=0;
+  if(/^nl[-_]NL/i.test(v.lang))s+=2;else if(/^nl/i.test(v.lang))s+=1;
+  if(/premium/i.test(id))s+=6;else if(/enhanced|verbeterd|natural|neural/i.test(id))s+=4;
+  if(/siri/i.test(id))s+=5;
+  if(/eddy|flo\b|grandma|grandpa|reed|rocko|sandy|shelley|oma|opa/i.test(v.name))s-=4;
+  return s;
+}
+function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^nl/i.test(v.lang)).sort((a,b)=>voiceScore(b)-voiceScore(a))}catch(e){VOICES=[]}}
+const voiceLabel=v=>v.name+(/^nl[-_]BE/i.test(v.lang)?' (Vlaams)':'');
+function curVoice(){return VOICES.find(v=>v.voiceURI===opts.voice)||VOICES[0]||null}
+try{loadVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const n=VOICES.length;loadVoices();if(VOICES.length!==n&&!S&&document.getElementById('readt'))home()})}catch(e){}
 function say(text){
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='nl-NL';if(nlVoice)u.voice=nlVoice;u.rate=.92;speechSynthesis.speak(u)}catch(e){}
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=curVoice();u.lang=v?v.lang:'nl-NL';if(v)u.voice=v;u.rate=.92;speechSynthesis.speak(u)}catch(e){}
 }
 
 /* ================= opslag ================= */
@@ -387,7 +399,9 @@ function home(){
     <h1>Sommenland</h1>
     <p class="muted">Vijf werelden vol plus- en minsommen. Elke goede som is een blokje op je toren!</p>
     <div class="row"><span class="score">★ ${total} / ${WORLDS.length*LEVELS.length*3}</span>
-      <button class="toggle" id="readt" aria-pressed="${!!opts.read}">🔊 Voorlezen: ${opts.read?'aan':'uit'}</button></div>
+      <button class="toggle" id="readt" aria-pressed="${!!opts.read}">🔊 Voorlezen: ${opts.read?'aan':'uit'}</button>
+      ${VOICES.length?`<label class="toggle" for="voicesel">Stem <select id="voicesel">${VOICES.map(v=>`<option value="${v.voiceURI.replace(/"/g,'&quot;')}"${v===curVoice()?' selected':''}>${voiceLabel(v).replace(/</g,'&lt;')}</option>`).join('')}</select></label>
+      <button class="toggle" id="vtest">▶ Probeer</button>`:''}</div>
   </header>
   <section class="worlds">${WORLDS.map((w,wi)=>{
     const counts=LEVELS.map((_,li)=>best[K(wi,li)]||0),f=counts.reduce((a,b)=>a+b,0);
@@ -400,6 +414,9 @@ function home(){
   </section>
   <p><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>start(+b.dataset.w,+b.dataset.l));
+  const vs=document.getElementById('voicesel');
+  if(vs)vs.onchange=()=>{opts.voice=vs.value;store('sl-opts',opts);say('Hallo! Ik lees de sommen voor.')};
+  const vt=document.getElementById('vtest');if(vt)vt.onclick=()=>say('Hoeveel is acht plus vijf?');
   document.getElementById('readt').onclick=()=>{opts.read=!opts.read;store('sl-opts',opts);home();document.getElementById('readt').focus({preventScroll:true})};
   const fl=last&&app.querySelector(`.lvl[data-w="${last.wi}"][data-l="${last.li}"]`);
   if(fl)fl.focus({preventScroll:false});
@@ -591,7 +608,7 @@ function ioHide(){
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#io-open'))ioShow()});
 
 home();
-window.__test={plusPair,minPair,jumpsFor,makeQ,lijnSVG,rekHTML};
+window.__test={plusPair,minPair,jumpsFor,makeQ,lijnSVG,rekHTML,say,voices:()=>VOICES};
 })();
 </script>
 
