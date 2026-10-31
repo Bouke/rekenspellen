@@ -181,57 +181,81 @@ const MINUS='−';
 
 /* ================= werelden ================= */
 const WORLDS=[
- {name:'De Zebraweide',col:'--w1',pat:'zebra',range:'tot 10',intro:'Help de zebra\'s met tellen in de wei.',
-  plus:[(a,b)=>`Zebra heeft ${a} knuffels. Ze krijgt er ${b} bij. Hoeveel knuffels heeft ze nu?`,
+ {name:'De Zebraweide',wie:['Zebra Zoë','Zebra Zep'],noun:['wortel','wortels'],col:'--w1',pat:'zebra',range:'tot 10',intro:'Help de zebra\'s met tellen in de wei.',
+  plus:[(a,b)=>`Aan de boom hangen ${a} appels. Er groeien er ${b} bij. Hoeveel appels hangen er nu?`,
+        (a,b)=>`Zebra springt ${a} keer over het hek en dan nog ${b} keer. Hoe vaak springt ze in totaal?`,
+        (a,b)=>`Zebra heeft ${a} knuffels. Ze krijgt er ${b} bij. Hoeveel knuffels heeft ze nu?`,
         (a,b)=>`In de wei staan ${a} zebra's. Er komen er ${b} aanrennen. Hoeveel zebra's staan er nu in de wei?`,
         (a,b)=>`Zebra eet ${a} appels en daarna nog ${b}. Hoeveel appels eet ze in totaal?`,
         (a,b)=>`Op de rug van zebra zitten ${a} vogeltjes. Er landen er nog ${b}. Hoeveel vogeltjes zitten er nu?`],
-  min:[(a,b)=>`Zebra heeft ${a} wortels. Ze eet er ${b} op. Hoeveel wortels zijn er nog?`,
+  min:[(a,b)=>`Zebra heeft ${a} strikjes in haar manen. Er waaien er ${b} weg. Hoeveel strikjes heeft ze nog?`,
+       (a,b)=>`In de schuur liggen ${a} hooibalen. De zebra's eten er ${b} op. Hoeveel hooibalen liggen er nog?`,
+       (a,b)=>`Zebra heeft ${a} wortels. Ze eet er ${b} op. Hoeveel wortels zijn er nog?`,
        (a,b)=>`Er slapen ${a} zebra's. Er worden er ${b} wakker. Hoeveel zebra's slapen er nog?`,
        (a,b)=>`Zebra heeft ${a} knuffels in bed. Er vallen er ${b} op de grond. Hoeveel knuffels liggen er nog in bed?`,
        (a,b)=>`Er drinken ${a} zebra's bij de vijver. Er lopen er ${b} weg. Hoeveel zebra's drinken er nog?`]},
- {name:'De Minionsfabriek',col:'--w2',pat:'monster',range:'tot 20',intro:'Help de minions in de fabriek. Tot 20, zonder over de 10.',
-  plus:[(a,b)=>`Er werken ${a} minions in de fabriek. Er komen er ${b} bij. Hoeveel minions zijn er nu?`,
+ {name:'De Minionsfabriek',wie:['Kevin','Bob'],noun:['banaan','bananen'],col:'--w2',pat:'monster',range:'tot 20',intro:'Help de minions in de fabriek. Tot 20, zonder over de 10.',
+  plus:[(a,b)=>`Bob heeft ${a} knuffelbeertjes. Hij krijgt er ${b} bij. Hoeveel knuffelbeertjes heeft hij nu?`,
+        (a,b)=>`In de fabriek staan ${a} gele machines en ${b} blauwe machines. Hoeveel machines zijn het samen?`,
+        (a,b)=>`Er werken ${a} minions in de fabriek. Er komen er ${b} bij. Hoeveel minions zijn er nu?`,
         (a,b)=>`De minions bakken ${a} bananentaarten. Daarna bakken ze er nog ${b}. Hoeveel taarten zijn het samen?`,
         (a,b)=>`In de raket zitten ${a} minions. Er springen er nog ${b} in. Hoeveel minions zitten er nu in de raket?`,
         (a,b)=>`${a} minions zingen een liedje. Er doen er ${b} mee. Hoeveel minions zingen er nu?`],
-  min:[(a,b)=>`De minions hebben ${a} bananen. Ze eten er ${b} op. Hoeveel bananen zijn er nog?`,
+  min:[(a,b)=>`Op tafel liggen ${a} brillen. De minions zetten er ${b} op. Hoeveel brillen liggen er nog op tafel?`,
+       (a,b)=>`Kevin heeft ${a} ijsjes. Hij laat er ${b} vallen. Hoeveel ijsjes heeft hij nog?`,
+       (a,b)=>`De minions hebben ${a} bananen. Ze eten er ${b} op. Hoeveel bananen zijn er nog?`,
        (a,b)=>`Er staan ${a} minions op een ladder. Er vallen er ${b} af. Hoeveel minions staan er nog op de ladder?`,
        (a,b)=>`De minions blazen ${a} ballonnen op. Er knappen er ${b}. Hoeveel ballonnen zijn er nog heel?`,
        (a,b)=>`Er zitten ${a} minions in de achtbaan. Er stappen er ${b} misselijk uit. Hoeveel minions zitten er nog in de achtbaan?`]},
- {name:'LEGO-stad',col:'--w3',pat:'steen',range:'tot 20, over de 10',intro:'Bouw de LEGO-stad. Nu gaan de sommen over de 10 heen.',
-  plus:[(a,b)=>`Je LEGO-toren is ${a} blokjes hoog. Je zet er ${b} bovenop. Hoe hoog is de toren nu?`,
+ {name:'LEGO-stad',wie:['Mia','Olivia'],noun:['blokje','blokjes'],col:'--w3',pat:'steen',range:'tot 20, over de 10',intro:'Bouw de LEGO-stad. Nu gaan de sommen over de 10 heen.',
+  plus:[(a,b)=>`Op de LEGO-boerderij staan ${a} koeien. Er komen er ${b} bij. Hoeveel koeien staan er nu?`,
+        (a,b)=>`Je LEGO-brug is ${a} blokjes lang. Je maakt hem ${b} blokjes langer. Hoe lang is de brug nu?`,
+        (a,b)=>`Je LEGO-toren is ${a} blokjes hoog. Je zet er ${b} bovenop. Hoe hoog is de toren nu?`,
         (a,b)=>`Je bouwt een auto van ${a} blokjes. Voor de wielen heb je er nog ${b} nodig. Hoeveel blokjes zijn het samen?`,
         (a,b)=>`In de LEGO-stad wonen ${a} poppetjes. Er verhuizen er ${b} naar de stad. Hoeveel poppetjes wonen er nu?`,
         (a,b)=>`Je hebt ${a} rode blokjes en ${b} blauwe blokjes. Hoeveel blokjes heb je samen?`],
-  min:[(a,b)=>`Je hebt ${a} LEGO-blokjes. Je broer pakt er ${b}. Hoeveel heb je er nog?`,
+  min:[(a,b)=>`Er rijden ${a} LEGO-auto's op de weg. Er parkeren er ${b}. Hoeveel auto's rijden er nog?`,
+       (a,b)=>`Je kasteel heeft ${a} vlaggetjes. Er breken er ${b} af. Hoeveel vlaggetjes zijn er nog?`,
+       (a,b)=>`Je hebt ${a} LEGO-blokjes. Je broer pakt er ${b}. Hoeveel heb je er nog?`,
        (a,b)=>`Er staan ${a} LEGO-huizen. Een draak blaast er ${b} omver. Hoeveel huizen staan er nog?`,
        (a,b)=>`In de bak liggen ${a} blokjes. Je gebruikt er ${b} voor je kasteel. Hoeveel blokjes liggen er nog in de bak?`,
        (a,b)=>`Je ruimteschip heeft ${a} lampjes. Er gaan er ${b} uit. Hoeveel lampjes branden er nog?`]},
- {name:'Het bureau van Dog Man',col:'--w4',pat:'politie',range:'tot 100',intro:'Dog Man lost zaken op. Grote getallen, zonder over het tiental.',
-  plus:[(a,b)=>`Dog Man vindt ${a} botjes. Daarna vindt hij er nog ${b}. Hoeveel botjes zijn het samen?`,
+ {name:'Het bureau van Dog Man',wie:['Dog Man','Li\'l Petey'],noun:['botje','botjes'],col:'--w4',pat:'politie',range:'tot 100',intro:'Dog Man lost zaken op. Grote getallen, zonder over het tiental.',
+  plus:[(a,b)=>`Dog Man leest ${a} bladzijden en daarna nog ${b}. Hoeveel bladzijden leest hij in totaal?`,
+        (a,b)=>`Er zitten ${a} vlooien op Dog Man. Er springen er nog ${b} op. Hoeveel vlooien zitten er nu op hem?`,
+        (a,b)=>`Dog Man vindt ${a} botjes. Daarna vindt hij er nog ${b}. Hoeveel botjes zijn het samen?`,
         (a,b)=>`Dog Man rent ${a} meter achter een kat aan en daarna nog ${b} meter. Hoeveel meter rent hij in totaal?`,
         (a,b)=>`Dog Man graaft ${a} gaten in het park en daarna nog ${b}. Hoeveel gaten heeft hij gegraven?`,
         (a,b)=>`Op het bureau liggen ${a} donuts. De chef neemt er nog ${b} mee. Hoeveel donuts liggen er nu?`],
-  min:[(a,b)=>`Dog Man heeft ${a} hondenkoekjes. Hij eet er ${b} op. Hoeveel koekjes heeft hij nog?`,
+  min:[(a,b)=>`Dog Man heeft ${a} ballen. Hij verstopt er ${b} onder de bank. Hoeveel ballen liggen er nog?`,
+       (a,b)=>`In de straat staan ${a} lantaarnpalen. Dog Man heeft er al ${b} besnuffeld. Hoeveel moet hij er nog besnuffelen?`,
+       (a,b)=>`Dog Man heeft ${a} hondenkoekjes. Hij eet er ${b} op. Hoeveel koekjes heeft hij nog?`,
        (a,b)=>`Petey bouwt ${a} robots. Dog Man maakt er ${b} kapot. Hoeveel robots zijn er nog over?`,
        (a,b)=>`Er liggen ${a} kranten op de stoep. Dog Man brengt er ${b} rond. Hoeveel kranten liggen er nog?`,
        (a,b)=>`Dog Man heeft ${a} boeven gevangen. Er ontsnappen er ${b}. Hoeveel boeven zitten er nog in de cel?`]},
- {name:'Het bos van Dolfje Weerwolfje',col:'--w5',pat:'maan',range:'tot 100, over het tiental',intro:'Bij volle maan wordt Dolfje een weerwolfje. De moeilijkste wereld!',
-  plus:[(a,b)=>`Bij volle maan huilen ${a} wolven in het bos. Er komen er ${b} bij. Hoeveel wolven huilen er nu?`,
+ {name:'Het bos van Dolfje Weerwolfje',wie:['Dolfje','Noura'],noun:['snoepje','snoepjes'],col:'--w5',pat:'maan',range:'tot 100, over het tiental',intro:'Bij volle maan wordt Dolfje een weerwolfje. De moeilijkste wereld!',
+  plus:[(a,b)=>`Dolfje en Noura zoeken ${a} schelpen en daarna nog ${b}. Hoeveel schelpen hebben ze?`,
+        (a,b)=>`Dolfje huilt ${a} keer naar de maan en dan nog ${b} keer. Hoe vaak huilt hij in totaal?`,
+        (a,b)=>`Bij volle maan huilen ${a} wolven in het bos. Er komen er ${b} bij. Hoeveel wolven huilen er nu?`,
         (a,b)=>`Dolfje vindt ${a} kastanjes in het bos en daarna nog ${b}. Hoeveel kastanjes heeft hij?`,
         (a,b)=>`Dolfje rent ${a} meter naar de vijver en dan nog ${b} meter naar huis. Hoeveel meter rent hij?`,
         (a,b)=>`In Dolfjes vacht zitten ${a} blaadjes. Er waaien er nog ${b} bij. Hoeveel blaadjes zitten er nu?`],
-  min:[(a,b)=>`Dolfje heeft ${a} snoepjes. Hij eet er ${b} op. Hoeveel snoepjes heeft hij nog?`,
+  min:[(a,b)=>`In de boom hangen ${a} vleermuizen. Er vliegen er ${b} weg. Hoeveel vleermuizen hangen er nog?`,
+       (a,b)=>`Dolfje heeft ${a} haren op zijn neus. Hij scheert er ${b} af. Hoeveel haren zitten er nog op zijn neus?`,
+       (a,b)=>`Dolfje heeft ${a} snoepjes. Hij eet er ${b} op. Hoeveel snoepjes heeft hij nog?`,
        (a,b)=>`In het bos staan ${a} paddenstoelen. Dolfje stampt er ${b} plat. Hoeveel paddenstoelen staan er nog?`,
        (a,b)=>`Dolfje moet ${a} bladzijden lezen. Hij heeft er al ${b} gelezen. Hoeveel bladzijden moet hij nog?`,
        (a,b)=>`Er schijnen ${a} sterren. De wolken verstoppen er ${b}. Hoeveel sterren zie je nog?`]},
- {name:'De Pokémonjacht',col:'--w6',pat:'poke',range:'tot 20, door elkaar',d:[2,3],extra:true,intro:'Vang zoveel mogelijk Pokémon. Extra oefenen tot 20: met en zonder over de 10.',
-  plus:[(a,b)=>`Je hebt ${a} Pokémon gevangen. Je vangt er nog ${b}. Hoeveel Pokémon heb je nu?`,
+ {name:'De Pokémonjacht',wie:['Ash','Misty'],noun:['Pokéball','Pokéballen'],col:'--w6',pat:'poke',range:'tot 20, door elkaar',d:[2,3],extra:true,intro:'Vang zoveel mogelijk Pokémon. Extra oefenen tot 20: met en zonder over de 10.',
+  plus:[(a,b)=>`Ash heeft ${a} badges. Hij wint er nog ${b}. Hoeveel badges heeft hij nu?`,
+        (a,b)=>`In de vijver zwemmen ${a} Magikarp. Er komen er ${b} bij. Hoeveel Magikarp zwemmen er nu?`,
+        (a,b)=>`Je hebt ${a} Pokémon gevangen. Je vangt er nog ${b}. Hoeveel Pokémon heb je nu?`,
         (a,b)=>`Pikachu geeft ${a} schokken en daarna nog ${b}. Hoeveel schokken zijn het samen?`,
         (a,b)=>`Je hebt ${a} Pokémonkaarten. Je krijgt er ${b} van een vriend. Hoeveel kaarten heb je nu?`,
         (a,b)=>`In het hoge gras zitten ${a} Pokémon. Er komen er nog ${b} bij. Hoeveel Pokémon zitten er nu?`],
-  min:[(a,b)=>`Je hebt ${a} Pokéballen. Je gooit er ${b}. Hoeveel Pokéballen heb je nog?`,
+  min:[(a,b)=>`Pikachu heeft ${a} flesjes ketchup. Hij drinkt er ${b} leeg. Hoeveel volle flesjes zijn er nog?`,
+       (a,b)=>`Er slapen ${a} Snorlax op de weg. Er worden er ${b} wakker. Hoeveel Snorlax slapen er nog?`,
+       (a,b)=>`Je hebt ${a} Pokéballen. Je gooit er ${b}. Hoeveel Pokéballen heb je nog?`,
        (a,b)=>`Je hebt ${a} Pokémonkaarten. Je ruilt er ${b} weg. Hoeveel kaarten heb je nog?`,
        (a,b)=>`Je Pokémon heeft ${a} levenspunten. Hij verliest er ${b}. Hoeveel levenspunten heeft hij nog?`,
        (a,b)=>`Er vliegen ${a} vogel-Pokémon. Er landen er ${b}. Hoeveel vliegen er nog?`]}
@@ -290,7 +314,20 @@ function qPlusMin(d,w,story){
   const js=jumpsFor(a,b,plus?1:-1);
   const help=useLijn(d)?{kind:'lijn',start:a,jumps:js}:{kind:'rek',segs:plus?[[a,'a'],[b,'b']]:[[a-b,'a'],[b,'a gone']]};
   const q={tag:plus?'Plus':'Min',ans:c,help,explain:js.length>1?`Handig in stapjes:<br>${chain(a,js)}`:`${a} ${op} ${b} = ${c}`};
-  if(story){q.tag='Verhaaltje';q.story=pick(plus?w.plus:w.min)(a,b);q.parts=null}
+  if(story){
+    q.tag='Verhaaltje';q.parts=null;
+    const kind=pick(['std','std','std','std','vgl']);
+    const nn=n=>n===1?w.noun[0]:w.noun[1];
+    if(kind==='vgl'&&plus){ /* aanvullen: hoeveel nog erbij? */
+      q.story=`${w.wie[0]} heeft ${a} ${nn(a)}. Hoeveel ${w.noun[1]} moet ${w.wie[0]} er nog bij krijgen om er ${c} te hebben?`;
+      q.ans=b;q.help=useLijn(d)?{kind:'lijn',start:a,target:c,gapLabel:'+ ?'}:{kind:'rek',segs:[[a,'a'],[b,'todo']]};
+      q.explain=`Van ${a} naar ${c} is ${b}.<br>${c} ${MINUS} ${a} = ${b}`;
+    }else if(kind==='vgl'){ /* vergelijken: hoeveel meer? */
+      q.story=`${w.wie[0]} heeft ${a} ${nn(a)}. ${w.wie[1]} heeft er ${b}. Hoeveel ${w.noun[1]} heeft ${w.wie[0]} meer?`;
+      q.help=useLijn(d)?{kind:'lijn',start:b,target:a,gapLabel:'+ ?'}:{kind:'rek',segs:[[b,'a'],[a-b,'todo']]};
+      q.explain=`Het verschil tussen ${a} en ${b}:<br>${a} ${MINUS} ${b} = ${c}`;
+    }else q.story=pick(plus?w.plus:w.min)(a,b);
+  }
   else q.parts=[a,op,b,'=','?'];
   return q;
 }
