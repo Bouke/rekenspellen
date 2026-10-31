@@ -36,13 +36,13 @@
 /* Breukenklimmer 2: koeler, dieper palet */
 :root[data-game="2"]{
   --bg:#dce3eb; --panel:#f8fafc; --ink:#16202b; --muted:#566476; --line:#bfcad6; --chalk:#ecf0f5;
-  --w1:#14809a; --w2:#c0391f; --w3:#4752c4; --w4:#c46a12}
+  --w1:#14809a; --w2:#c0391f; --w3:#4752c4; --w4:#c46a12; --w5:#1d6fc9; --w6:#24318a; --w7:#7a3fb0}
 @media (prefers-color-scheme:dark){:root[data-game="2"]:not([data-theme="light"]){
   --bg:#0b1017; --panel:#151c26; --ink:#eef3f8; --muted:#93a1b1; --line:#2c3949; --chalk:#1c2531;
-  --w1:#3fb6cf; --w2:#f0624a; --w3:#8089f2; --w4:#f0973f}}
+  --w1:#3fb6cf; --w2:#f0624a; --w3:#8089f2; --w4:#f0973f; --w5:#4f9bf0; --w6:#6f7de0; --w7:#b07ae6}}
 :root[data-game="2"][data-theme="dark"]{
   --bg:#0b1017; --panel:#151c26; --ink:#eef3f8; --muted:#93a1b1; --line:#2c3949; --chalk:#1c2531;
-  --w1:#3fb6cf; --w2:#f0624a; --w3:#8089f2; --w4:#f0973f}
+  --w1:#3fb6cf; --w2:#f0624a; --w3:#8089f2; --w4:#f0973f; --w5:#4f9bf0; --w6:#6f7de0; --w7:#b07ae6}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
 .wrap{max-width:1080px;margin:0 auto;padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
 h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.01em}
@@ -350,7 +350,23 @@ const WORLDS2=[
   items:'steentjes',cats:['rood','blauw','geel'],track:'de megatoren',
   len:(L,a,b)=>`De megatoren wordt ${L} centimeter hoog. Jij bouwt ${a} en je vriend ${b} van de toren. Hoeveel centimeter moet er nog bij?`,
   part:(a,b)=>`Van de bouwplaat is ${a} bebouwd. ${b} van het bebouwde deel is een kasteel. Welk deel van de hele plaat is kasteel?`,
-  div:(t,p)=>`Je hebt ${t} meter treinrails. Eén railstuk is ${p} meter. Hoeveel railstukken zijn dat?`}
+  div:(t,p)=>`Je hebt ${t} meter treinrails. Eén railstuk is ${p} meter. Hoeveel railstukken zijn dat?`},
+ /* extra werelden voor Gib */
+ {name:'Duckstad',col:'--w5',meter:'tower',d:3,extra:true,intro:'Help Donald Duck, Kwik, Kwek en Kwak. En pas op voor de Zware Jongens!',
+  items:'muntjes',cats:['goud','zilver','koper'],track:'de race door Duckstad',
+  len:(L,a,b)=>`Het geldpakhuis van Oom Dagobert is ${L} meter hoog. Donald klimt eerst ${a} omhoog en daarna nog ${b}. Hoeveel meter moet hij nog?`,
+  part:(a,b)=>`Van het geld in het geldpakhuis is ${a} goud. ${b} van het goud hebben de Zware Jongens gestolen. Welk deel van al het geld is gestolen?`,
+  div:(t,p)=>`Kwik, Kwek en Kwak hebben ${t} liter limonade. Eén glas is ${p} liter. Hoeveel glazen kunnen ze inschenken?`},
+ {name:'De PlayStation-arena',col:'--w6',meter:'obby',d:4,extra:true,intro:'Level na level op de PlayStation. Haal alle trofeeën!',
+  items:'trofeeën',cats:['goud','zilver','brons'],track:'het level',
+  len:(L,a,b)=>`Een level is ${L} meter lang. Je speelt eerst ${a} van het level en daarna nog ${b}. Hoeveel meter moet je nog?`,
+  part:(a,b)=>`Van je PlayStation-games is ${a} een racegame. ${b} van die racegames heb je uitgespeeld. Welk deel van al je games is een uitgespeelde racegame?`,
+  div:(t,p)=>`De batterij van je controller gaat nog ${t} uur mee. Eén potje duurt ${p} uur. Hoeveel potjes kun je nog spelen?`},
+ {name:'De Ruimterockers',col:'--w7',meter:'wall',d:4,extra:true,intro:'Rock mee met de Ruimterockers, van planeet naar planeet.',
+  items:'sterren',cats:['geel','wit','blauw'],track:'de reis naar het volgende concert',
+  len:(L,a,b)=>`De reis naar het volgende concert is ${L} lichtjaar. De raket vliegt eerst ${a} van de reis en daarna nog ${b}. Hoeveel lichtjaar moeten de Ruimterockers nog?`,
+  part:(a,b)=>`Van de liedjes van de Ruimterockers is ${a} een rocknummer. ${b} van die rocknummers gaat over aliens. Welk deel van alle liedjes is een alienrocknummer?`,
+  div:(t,p)=>`De Ruimterockers mogen ${t} uur spelen. Elk liedje duurt ${p} uur. Hoeveel liedjes kunnen ze spelen?`}
 ];
 const LEVELS2=[
  {name:'Vergelijken & vereenvoudigen+',sub:'Drie breuken, gemengde getallen, grote getallen'},
@@ -359,7 +375,7 @@ const LEVELS2=[
  {name:'Verhaalsommen',sub:'Langere sommen in meerdere stappen'},
  {name:'Baasroute',sub:'Alles door elkaar, op tijd',boss:true}
 ];
-const BOSS_TIME=[360,330,300,270];
+const BOSS_TIME=[360,330,300,270,300,270,270];
 
 function q2Order(d){
   let a,b,c,L;
@@ -488,7 +504,7 @@ function q2Story(d,w){
     explain:`Maak de noemers gelijk (${L}): Sem ${fr(x,L)}, Noor ${fr(y,L)}<br>Verschil: ${fr(Math.max(x,y),L)} − ${fr(Math.min(x,y),L)} = ${fr(Math.abs(x-y),L)}${res.d!==L?` = ${fr(res.n,res.d)}`:''}`};
 }
 function makeQ2(wi,li){
-  const d=wi+1,w=WORLDS2[wi];
+  const w=WORLDS2[wi],d=w.d||wi+1;
   if(li===4){const q=makeQ2(wi,pick([0,1,2,2,3]));q.tag='Baas · '+q.tag;return q}
   if(li===0)return pick([()=>qSimplify(Math.min(d+1,4),12),q2Order,q2Order,q2CompareMixed,q2Improper])(d);
   if(li===1)return q2AddSub(d);
@@ -589,13 +605,13 @@ function home(){
     ${game===2?'<div><button class="btn" id="to1">← Breukenklimmer 1</button></div>':''}
     <h1>Breuken&shy;klimmer${game===2?' 2 <span class="badge">Expert</span>':''}</h1>
     <p class="muted">${game===1?`Vier werelden, elk met drie routes. Elke route heeft ${QN} grepen. Elk goed antwoord brengt je hoger in je wereld.`
-      :`Vier nieuwe werelden. Elke wereld heeft vier routes en een baasroute op tijd. Haal ze allemaal op 3 sterren!`}</p>
+      :`Vier nieuwe werelden en drie extra werelden. Elke wereld heeft vier routes en een baasroute op tijd. Haal ze allemaal op 3 sterren!`}</p>
     <div class="row"><span class="score">★ ${total} / ${g.worlds.length*L*3} sterren</span>${cloudNote()}</div>
   </header>
   <section class="worlds">${g.worlds.map((w,wi)=>{
     const f=worldFilled(wi);
     return `<article class="world" style="--c:var(${w.col})">
-      <div class="top"><small>Wereld ${wi+1} · niveau ${'▲'.repeat(wi+1)}</small><h2>${w.name}</h2><p>${w.intro}</p></div>
+      <div class="top"><small>Wereld ${wi+1}${w.extra?' · extra':''} · niveau ${'▲'.repeat(w.d||wi+1)}</small><h2>${w.name}</h2><p>${w.intro}</p></div>
       <div class="prog"><span><span>${w.meter==='tower'?'Toren':'Hoogte'}</span><span>${f} / ${L*QN}</span></span>${meterHTML(wi,g.levels.map((_,li)=>best[K(game,wi,li)]||0),{})}</div>
       <div class="levels">${g.levels.map((l,li)=>`
         <button class="lvl${l.boss?' boss':''}" data-w="${wi}" data-l="${li}"><span><b>${l.boss?'👑 ':''}${l.boss?'':'Route '+(li+1)+': '}${l.name}</b><span class="sub">${l.sub}${l.boss?` · ${Math.floor(BOSS_TIME[wi]/60)}:${String(BOSS_TIME[wi]%60).padStart(2,'0')} min`:''}</span></span>${starHTML(stars[K(game,wi,li)]||0)}</button>`).join('')}

@@ -20,7 +20,7 @@
 :root{
   --bg:#eef1ea; --panel:#ffffff; --ink:#1f2622; --muted:#5d6a62; --line:#cdd6cf; --chalk:#f5f8f4;
   --good:#2e8a4a; --bad:#c2402f; --a:#e0623a; --b:#1f9e86;
-  --w1:#3d4147; --w2:#7a4fd6; --w3:#d6402f; --w4:#1f5fbf; --w5:#2b3a67;
+  --w1:#3d4147; --w2:#7a4fd6; --w3:#d6402f; --w4:#1f5fbf; --w5:#2b3a67; --w6:#0f7f86;
   --acc:var(--w1);
   --display:"Bungee","Arial Black",Impact,sans-serif;
   --body:"Andika","Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
@@ -28,11 +28,11 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#141916; --panel:#1d241f; --ink:#eef3ef; --muted:#9aa89f; --line:#34413a; --chalk:#252e28;
   --good:#55c174; --bad:#ec6b58; --a:#f07a50; --b:#3cc4a8;
-  --w1:#6b7079; --w2:#9a74ec; --w3:#ec5a47; --w4:#4a86e0; --w5:#5468a8; color-scheme:dark}}
+  --w1:#6b7079; --w2:#9a74ec; --w3:#ec5a47; --w4:#4a86e0; --w5:#5468a8; --w6:#2fb0b8; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#141916; --panel:#1d241f; --ink:#eef3ef; --muted:#9aa89f; --line:#34413a; --chalk:#252e28;
   --good:#55c174; --bad:#ec6b58; --a:#f07a50; --b:#3cc4a8;
-  --w1:#6b7079; --w2:#9a74ec; --w3:#ec5a47; --w4:#4a86e0; --w5:#5468a8; color-scheme:dark}
+  --w1:#6b7079; --w2:#9a74ec; --w3:#ec5a47; --w4:#4a86e0; --w5:#5468a8; --w6:#2fb0b8; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:19px;line-height:1.45}
 .wrap{max-width:1100px;margin:0 auto;padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
 h1,h2,h3{margin:0;text-wrap:balance}
@@ -73,6 +73,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .pat-monster{background:repeating-linear-gradient(90deg,#ffd23f 0 22px,#2f5fa8 22px 44px)}
 .pat-steen{background:linear-gradient(#0003 0 0) 0 8px/100% 2px no-repeat,repeating-linear-gradient(90deg,#0003 0 2px,transparent 2px 30px) 0 0/30px 8px repeat-x,repeating-linear-gradient(90deg,#0003 0 2px,transparent 2px 30px) 15px 10px/30px 8px repeat-x,#e05544}
 .pat-politie{background:repeating-linear-gradient(90deg,#1f5fbf 0 18px,#ffffff 18px 36px)}
+.pat-poke{background:radial-gradient(circle at 12px 9px,#fff 4px,#222 4.5px 5.5px,transparent 6px) 0 0/36px 18px,linear-gradient(#e3350d 0 50%,#f4f4f4 50%)}
 .pat-maan{background:radial-gradient(circle at 8px 6px,#fff 1.5px,transparent 2px) 0 0/34px 18px,radial-gradient(circle at 24px 13px,#ffe9a8 1.5px,transparent 2px) 0 0/34px 18px,#1b2547}
 
 /* meter (toren) */
@@ -194,7 +195,10 @@ const WORLDS=[
   min:(a,b)=>`Dog Man heeft ${a} boeven in de bus gezet. Er ontsnappen er ${b}. Hoeveel boeven zitten er nog in de bus?`},
  {name:'Het bos van Dolfje Weerwolfje',col:'--w5',pat:'maan',range:'tot 100, over het tiental',intro:'Bij volle maan wordt Dolfje een weerwolfje. De moeilijkste wereld!',
   plus:(a,b)=>`Bij volle maan huilen ${a} wolven in het bos. Er komen er ${b} bij. Hoeveel wolven huilen er nu?`,
-  min:(a,b)=>`Dolfje heeft ${a} snoepjes. Hij eet er ${b} op. Hoeveel snoepjes heeft hij nog?`}
+  min:(a,b)=>`Dolfje heeft ${a} snoepjes. Hij eet er ${b} op. Hoeveel snoepjes heeft hij nog?`},
+ {name:'De Pokémonjacht',col:'--w6',pat:'poke',range:'tot 20, door elkaar',d:[2,3],extra:true,intro:'Vang zoveel mogelijk Pokémon. Extra oefenen tot 20: met en zonder over de 10.',
+  plus:(a,b)=>`Je hebt ${a} Pokémon gevangen. Je vangt er nog ${b}. Hoeveel Pokémon heb je nu?`,
+  min:(a,b)=>`Je hebt ${a} Pokéballen. Je gooit er ${b}. Hoeveel Pokéballen heb je nog?`}
 ];
 const LEVELS=[
  {name:'Plus en min',sub:'Reken de som uit'},
@@ -277,7 +281,7 @@ function qPuzzle(d){
     explain:`Reken terug: ${c} + ${b} = ${a}<br>Controle: ${a} ${MINUS} ${b} = ${c}`};
 }
 function makeQ(wi,li){
-  const d=wi+1,w=WORLDS[wi];
+  const w=WORLDS[wi],d=w.d?pick(w.d):wi+1;
   if(li===0)return qPlusMin(d,w,false);
   if(li===1)return qPuzzle(d);
   return qPlusMin(d,w,true);
@@ -358,7 +362,7 @@ function voiceScore(v){
 function loadVoices(){try{VOICES=speechSynthesis.getVoices().filter(v=>/^nl/i.test(v.lang)).sort((a,b)=>voiceScore(b)-voiceScore(a))}catch(e){VOICES=[]}}
 const voiceLabel=v=>v.name+(/^nl[-_]BE/i.test(v.lang)?' (Vlaams)':'');
 function curVoice(){return VOICES.find(v=>v.voiceURI===opts.voice)||VOICES[0]||null}
-try{loadVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const n=VOICES.length;loadVoices();if(VOICES.length!==n&&!S&&document.getElementById('readt'))home()})}catch(e){}
+try{loadVoices();speechSynthesis.addEventListener('voiceschanged',()=>{const n=VOICES.length;loadVoices();})}catch(e){}
 function say(text){
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);const v=curVoice();u.lang=v?v.lang:'nl-NL';if(v)u.voice=v;u.rate=.92;speechSynthesis.speak(u)}catch(e){}
 }
@@ -397,26 +401,21 @@ function home(){
   app.innerHTML=`
   <header style="display:flex;flex-direction:column;gap:8px">
     <h1>Sommenland</h1>
-    <p class="muted">Vijf werelden vol plus- en minsommen. Elke goede som is een blokje op je toren!</p>
+    <p class="muted">Zes werelden vol plus- en minsommen. Elke goede som is een blokje op je toren!</p>
     <div class="row"><span class="score">★ ${total} / ${WORLDS.length*LEVELS.length*3}</span>
-      <button class="toggle" id="readt" aria-pressed="${!!opts.read}">🔊 Voorlezen: ${opts.read?'aan':'uit'}</button>
-      ${VOICES.length?`<label class="toggle" for="voicesel">Stem <select id="voicesel">${VOICES.map(v=>`<option value="${v.voiceURI.replace(/"/g,'&quot;')}"${v===curVoice()?' selected':''}>${voiceLabel(v).replace(/</g,'&lt;')}</option>`).join('')}</select></label>
-      <button class="toggle" id="vtest">▶ Probeer</button>`:''}</div>
+      <button class="toggle" id="readt" aria-pressed="${!!opts.read}">🔊 Voorlezen: ${opts.read?'aan':'uit'}</button></div>
   </header>
   <section class="worlds">${WORLDS.map((w,wi)=>{
     const counts=LEVELS.map((_,li)=>best[K(wi,li)]||0),f=counts.reduce((a,b)=>a+b,0);
     return `<article class="world" style="--c:var(${w.col})">
       <div class="band pat-${w.pat}"></div>
-      <div class="top"><small>Wereld ${wi+1} · ${w.range}</small><h2>${w.name}</h2><p>${w.intro}</p></div>
+      <div class="top"><small>Wereld ${wi+1}${w.extra?' · extra':''} · ${w.range}</small><h2>${w.name}</h2><p>${w.intro}</p></div>
       <div class="prog"><span><span>Toren</span><span>${f} / ${LEVELS.length*QN}</span></span>${meterHTML(wi,counts,{})}</div>
       <div class="levels">${LEVELS.map((l,li)=>`<button class="lvl" data-w="${wi}" data-l="${li}"><span><b>${l.name}</b><span class="sub">${l.sub}</span></span>${starHTML(stars[K(wi,li)]||0)}</button>`).join('')}</div>
     </article>`}).join('')}
   </section>
   <p><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('.lvl').forEach(b=>b.onclick=()=>start(+b.dataset.w,+b.dataset.l));
-  const vs=document.getElementById('voicesel');
-  if(vs)vs.onchange=()=>{opts.voice=vs.value;store('sl-opts',opts);say('Hallo! Ik lees de sommen voor.')};
-  const vt=document.getElementById('vtest');if(vt)vt.onclick=()=>say('Hoeveel is acht plus vijf?');
   document.getElementById('readt').onclick=()=>{opts.read=!opts.read;store('sl-opts',opts);home();document.getElementById('readt').focus({preventScroll:true})};
   const fl=last&&app.querySelector(`.lvl[data-w="${last.wi}"][data-l="${last.li}"]`);
   if(fl)fl.focus({preventScroll:false});
@@ -444,12 +443,13 @@ function play(){
       <div class="qrow"><span class="tag" style="flex:1">Som ${S.i+1} van ${QN} · ${q.tag}</span><button class="speak" id="spk" aria-label="Lees voor">🔊</button></div>
       ${q.story?`<p class="story">${q.story}</p>`:''}
       ${eqHTML(q)}
-      <button class="btn helpbtn" id="helpb">${useLijn(S.wi+1)?'📏 Getallenlijn':'🧮 Rekenrek'}</button>
+      <button class="btn helpbtn" id="helpb">${useLijn(Math.max(...[].concat(WORLDS[S.wi].d||S.wi+1)))?'📏 Getallenlijn':'🧮 Rekenrek'}</button>
       <div id="helpbox" ${S.help?'':'hidden'}>${helpHTML(q.help)}</div>
       <div id="fb"></div>
     </div>
     <div class="aside">
       <div class="pad" id="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<button class="del" data-k="del" aria-label="Wissen">⌫</button><button data-k="0">0</button><button class="ok" data-k="ok" aria-label="Controleer">✓</button></div>
+      <p class="muted" style="font-size:14px;text-align:center">Met een toetsenbord: typ de cijfers, <b>⌫</b> om te wissen en <b>Enter</b> om te controleren.</p>
     </div>
   </section>`;
   S.pop=-1;
