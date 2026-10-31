@@ -20,18 +20,18 @@
 :root{
   --bg:#e9edf0; --panel:#ffffff; --ink:#1d2730; --muted:#5b6873; --line:#c9d2d9; --chalk:#f6f8f9;
   --acc:#d9622f; --good:#2e8a4a; --bad:#c2402f;
-  --l0:#e3e8ec; --l1:#e8a598; --l2:#efc779; --l3:#6fb77f;
+  --l0:#e3e8ec; --l1:#e8a598; --l2:#f5d04a; --l3:#6fb77f; --gold:#c9940a;
   --display:"Bungee","Arial Black",Impact,sans-serif;
   --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#14191e; --panel:#1e252c; --ink:#eef2f5; --muted:#9aa7b2; --line:#33404b; --chalk:#252e36;
   --acc:#f07a45; --good:#55c174; --bad:#ec6b58;
-  --l0:#2a333c; --l1:#8e3c30; --l2:#93702a; --l3:#2f7a45; color-scheme:dark}}
+  --l0:#2a333c; --l1:#8e3c30; --l2:#f2c94c; --l3:#2f7a45; --gold:#f7d154; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#14191e; --panel:#1e252c; --ink:#eef2f5; --muted:#9aa7b2; --line:#33404b; --chalk:#252e36;
   --acc:#f07a45; --good:#55c174; --bad:#ec6b58;
-  --l0:#2a333c; --l1:#8e3c30; --l2:#93702a; --l3:#2f7a45; color-scheme:dark}
+  --l0:#2a333c; --l1:#8e3c30; --l2:#f2c94c; --l3:#2f7a45; --gold:#f7d154; color-scheme:dark}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
 .wrap{max-width:1080px;margin:0 auto;padding-block:16px 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px}
 h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance}
@@ -69,7 +69,11 @@ kbd{font:700 12px var(--body);border:1.5px solid currentColor;border-bottom-widt
 .map{display:grid;gap:3px;min-width:320px;font-variant-numeric:tabular-nums}
 .map .h{font-size:13px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center}
 .map .c{aspect-ratio:1.6;border-radius:4px;background:var(--l0);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--ink)}
-.map .c.l1{background:var(--l1)}.map .c.l2{background:var(--l2)}.map .c.l3{background:var(--l3)}
+.map .c.l1{background:var(--l1)}.map .c.l2{background:var(--l2);color:#1d2730}.map .c.l3{background:var(--l3)}
+.map .c.l4{background:var(--l3);box-shadow:inset 0 0 0 3px var(--gold)}
+.map .c.l5{background:linear-gradient(135deg,#ff6b6b,#ffb547,#ffe66d,#6bdb8f,#5ab9ff,#a98bfa);color:#1d2730}
+.legend i.gold{background:var(--l3);box-shadow:inset 0 0 0 3px var(--gold)}
+.legend i.rainbow{background:linear-gradient(135deg,#ff6b6b,#ffb547,#ffe66d,#6bdb8f,#5ab9ff,#a98bfa)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
 .legend i{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:5px}
 .maphead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
@@ -151,11 +155,14 @@ function level(key){
   const s=stats[key];
   if(!s||!s.n)return 0;
   if(s.s===0)return 1;
-  if(s.s>=3&&med(s.t)<=5000)return 3;
+  const m=med(s.t);
+  if(s.s>=25&&m<=2500)return 5;
+  if(s.s>=10&&m<=3500)return 4;
+  if(s.s>=3&&m<=5000)return 3;
   return 2;
 }
-const WEIGHT=[2.5,7,3.5,0.7];
-const greenKeer=()=>facts('keer',false).filter(f=>level(keyOf(f))===3).length;
+const WEIGHT=[2.5,7,3.5,0.7,0.4,0.25];
+const greenKeer=()=>facts('keer',false).filter(f=>level(keyOf(f))>=3).length;
 const BONUS_NEED=50; // van de 55 keersommen
 const bonusOpen=()=>preview||greenKeer()>=BONUS_NEED;
 
@@ -236,7 +243,7 @@ function home(focusSel){
     <div class="maphead"><h2>Tafelkaart</h2>
       <div class="seg" id="maps"><button data-v="keer" aria-pressed="${opts.map==='keer'}">Keer</button><button data-v="delen" aria-pressed="${opts.map==='delen'}">Delen</button>${bonusOpen()?`<button data-v="bonus" aria-pressed="${opts.map==='bonus'}">11 en 12</button>`:''}</div></div>
     <div class="mapwrap">${mapHTML()}</div>
-    <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, vlot)</span></div>
+    <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, vlot)</span><span><i class="gold"></i>Goud (10× goed, extra vlot)</span><span><i class="rainbow"></i>Regenboog (25× goed, supervlot)</span></div>
   </section>
   <p class="io-open"><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{opts.mode=b.dataset.m;store('ts-opts',opts);home(`#modes [data-m="${b.dataset.m}"]`)});
@@ -332,7 +339,7 @@ function ask(){
 function record(key,ok,ms){
   const s=stats[key]||{n:0,s:0,w:0,t:[]};
   s.n++;
-  if(ok){s.s++;s.t=[...(s.t||[]),ms].slice(-3)}else{s.s=0;s.w++;s.t=[]}
+  if(ok){s.s++;s.t=[...(s.t||[]),ms].slice(-10)}else{s.s=0;s.w++;s.t=[]}
   stats[key]=s;
 }
 function submit(){
