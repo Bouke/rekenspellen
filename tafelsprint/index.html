@@ -136,7 +136,10 @@ const SPRINT=60;
 const pick=a=>a[Math.floor(Math.random()*a.length)];
 const load=(k,d)=>{try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}};
 const store=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
-let stats=load('ts-stats',{}),recs=load('ts-recs',{}),hist=load('ts-hist',[]),opts=load('ts-opts',{mode:'keer',bonus:false,map:'keer'});
+let stats=load('ts-stats',{}),recs=load('ts-recs',{}),hist=load('ts-hist',[]),opts=load('ts-opts',{mode:'keer',bonus:false,map:'keer',max:10});
+if(!(opts.max>=2&&opts.max<=20))opts.max=10;
+if(opts.bonus){opts.bonus=false;opts.max=12}
+if(opts.map==='bonus')opts.map='keer';
 let preview=false;
 
 /* ---------- facts ---------- */
@@ -145,7 +148,8 @@ const kKey=(a,b)=>`k${Math.min(a,b)}x${Math.max(a,b)}`;
 const dKey=(a,b)=>`d${a*b}:${b}`;
 function facts(op,bonus){
   const out=[];
-  if(!bonus){for(let a=1;a<=10;a++)for(let b=1;b<=10;b++){if(op==='keer'&&a>b)continue;out.push({op,a,b})}}
+  if(!bonus){const M=bonus===false&&arguments.length>2?arguments[2]:opts.max,seen=new Set();
+    for(let t=1;t<=M;t++)for(let q=1;q<=10;q++){const f=op==='keer'?{op,a:Math.min(t,q),b:Math.max(t,q)}:{op,a:q,b:t};const k=keyOf(f);if(!seen.has(k)){seen.add(k);out.push(f)}}}
   else{for(const t of [11,12])for(let b=1;b<=12;b++){if(op==='keer'&&t===12&&b===11)continue;out.push(op==='keer'?{op,a:Math.min(t,b),b:Math.max(t,b)}:{op,a:b,b:t})}}
   return out;
 }
@@ -153,7 +157,10 @@ const keyOf=f=>f.op==='keer'?kKey(f.a,f.b):dKey(f.a,f.b);
 const med=a=>{if(!a||!a.length)return Infinity;const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
 /* Niveaus blijven staan: een fout zet alleen de reeks naar het volgende niveau op 0.
    e = behaald niveau (0 = nog niets, 3 groen, 4 goud, 5 regenboog); s = reeks sinds laatste fout/promotie */
-const NEXT={0:{need:3,ms:5000,to:3},3:{need:7,ms:3500,to:4},4:{need:15,ms:2500,to:5}};
+/* benodigde snelheid glijdt mee met het niveau: t/m 2 = 8 / 6 / 4 s, t/m 10 (en bonus) = 5 / 3,5 / 2,5 s */
+function speeds(){const M=Math.min(opts.max,10),f=(M-2)/8;return[Math.round(8000-3000*f),Math.round(6000-2500*f),Math.round(4000-1500*f)]}
+function nextStep(e){const sp=speeds();return{0:{need:3,ms:sp[0],to:3},3:{need:7,ms:sp[1],to:4},4:{need:15,ms:sp[2],to:5}}[e]}
+const secs=ms=>(ms/1000).toFixed(1).replace('.0','').replace('.',',');
 function norm(s){
   if(s.e===undefined){
     s.lw=s.n>0&&s.s===0;
@@ -170,7 +177,7 @@ function level(key){
   return s.lw?1:2;
 }
 const WEIGHT=[2.5,7,3.5,0.7,0.4,0.25];
-const greenKeer=()=>facts('keer',false).filter(f=>level(keyOf(f))>=3).length;
+const greenKeer=()=>facts('keer',false,10).filter(f=>level(keyOf(f))>=3).length;
 const BONUS_NEED=50; // van de 55 keersommen
 const bonusOpen=()=>preview||greenKeer()>=BONUS_NEED;
 
@@ -212,7 +219,8 @@ async function initCloud(){
   if(!S&&document.getElementById('go'))home();
 }
 const cloudNote=()=>cloudState==='cloud'?'<span class="cloud">☁️ Voortgang wordt bewaard in je Claude-account</span>':cloudState==='local'?'<span class="cloud">⚠️ Voortgang staat alleen op dit apparaat. Log in bij Claude om hem veilig te bewaren.</span>':'';
-const recKey=()=>opts.mode+(opts.bonus?'-bonus':'');
+const recKey=()=>opts.mode+(opts.max===10?'':'-t'+opts.max);
+const lvlLabel=()=>'tafels 1 t/m '+opts.max;
 const MODES={keer:'Keersommen',delen:'Deelsommen',mix:'Gemengd'};
 
 function stop(){if(clock){clearInterval(clock);clock=null}}
@@ -220,7 +228,6 @@ function stop(){if(clock){clearInterval(clock);clock=null}}
 /* ---------- home ---------- */
 function home(focusSel){
   stop();S=null;
-  if(opts.bonus&&!bonusOpen())opts.bonus=false;
   const rec=recs[recKey()]||0;
   const h=hist.filter(x=>x.k===recKey()).slice(-15);
   const hmax=Math.max(10,...h.map(x=>x.n));
@@ -235,13 +242,12 @@ function home(focusSel){
     <div class="panel">
       <span class="label">Wat ga je oefenen?</span>
       <div class="seg" id="modes">${Object.entries(MODES).map(([k,v])=>`<button data-m="${k}" aria-pressed="${opts.mode===k}">${v}</button>`).join('')}</div>
-      <div class="seg"><button id="lvl10" aria-pressed="${!opts.bonus}">Tafels 1 t/m 10</button>
-        <button id="lvlB" aria-pressed="${opts.bonus}" ${bonusOpen()?'':'disabled'}>${bonusOpen()?'⭐ Bonus: 11 en 12':'🔒 Bonus: 11 en 12'}</button></div>
-      ${bonusOpen()?'':`<p class="muted" style="font-size:14px">Bonuslevel gaat open als ${BONUS_NEED} van de 55 keersommen groen zijn op je tafelkaart. Nu: <b>${g}</b>.</p>`}
+      <span class="label">Tafels 1 t/m …</span>
+      <div class="seg" id="lvls">${Array.from({length:19},(_,i)=>i+2).map(n=>`<button data-n="${n}" aria-pressed="${opts.max===n}">${n}</button>`).join('')}</div>
       <div class="startrow"><button class="btn main" id="go">Start sprint <kbd>Enter</kbd></button><span class="muted">1 minuut</span></div>
     </div>
     <div class="panel">
-      <span class="label">Record · ${MODES[opts.mode]}${opts.bonus?' · bonus':''}</span>
+      <span class="label">Record · ${MODES[opts.mode]} · ${lvlLabel()}</span>
       <div class="rec"><b>${rec}</b><span class="muted">goed in 1 minuut</span></div>
       ${h.length?`<div class="hist" aria-label="Laatste sprints">${h.map((x,i)=>`<div class="hb${i===h.length-1?' last':''}" style="height:${Math.max(3,x.n/hmax*100)}%"><span>${x.n}</span></div>`).join('')}</div>
         <span class="muted" style="font-size:13px">Je laatste ${h.length} sprints</span>`:'<p class="muted">Nog geen sprints gedaan. Druk op Start!</p>'}
@@ -249,22 +255,21 @@ function home(focusSel){
   </section>
   <section class="panel">
     <div class="maphead"><h2>Tafelkaart</h2>
-      <div class="seg" id="maps"><button data-v="keer" aria-pressed="${opts.map==='keer'}">Keer</button><button data-v="delen" aria-pressed="${opts.map==='delen'}">Delen</button>${bonusOpen()?`<button data-v="bonus" aria-pressed="${opts.map==='bonus'}">11 en 12</button>`:''}</div></div>
+      <div class="seg" id="maps"><button data-v="keer" aria-pressed="${opts.map==='keer'}">Keer</button><button data-v="delen" aria-pressed="${opts.map==='delen'}">Delen</button></div></div>
     <div class="mapwrap">${mapHTML()}</div>
-    <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, vlot)</span><span><i class="gold"></i>Goud (10× goed, extra vlot)</span><span><i class="rainbow"></i>Regenboog (25× goed, supervlot)</span></div>
-    <p class="muted" style="font-size:14px;margin:0">Een kleur die je hebt, blijf je houden. Een fout zet alleen de teller naar de volgende kleur weer op 0: na groen nog 7× goed voor goud, na goud nog 15× goed voor regenboog.</p>
+    <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, binnen ${secs(speeds()[0])} s)</span><span><i class="gold"></i>Goud (nog 7× goed, binnen ${secs(speeds()[1])} s)</span><span><i class="rainbow"></i>Regenboog (nog 15× goed, binnen ${secs(speeds()[2])} s)</span></div>
+    <p class="muted" style="font-size:14px;margin:0">Een kleur die je hebt, blijf je houden. Een fout zet alleen de teller naar de volgende kleur weer op 0. De tijden horen bij je niveau (${lvlLabel()}).</p>
   </section>
   <p class="io-open"><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{opts.mode=b.dataset.m;store('ts-opts',opts);home(`#modes [data-m="${b.dataset.m}"]`)});
-  document.getElementById('lvl10').onclick=()=>{opts.bonus=false;store('ts-opts',opts);home('#lvl10')};
-  document.getElementById('lvlB').onclick=()=>{if(!bonusOpen())return;opts.bonus=true;store('ts-opts',opts);home('#lvlB')};
+  app.querySelectorAll('#lvls [data-n]').forEach(b=>b.onclick=()=>{opts.bonus=false;opts.max=+b.dataset.n;store('ts-opts',opts);home(`#lvls [data-n="${b.dataset.n}"]`)});
   app.querySelectorAll('#maps button').forEach(b=>b.onclick=()=>{opts.map=b.dataset.v;store('ts-opts',opts);home(`#maps [data-v="${b.dataset.v}"]`)});
   document.getElementById('go').onclick=startSprint;
   const f=(focusSel&&app.querySelector(focusSel))||document.getElementById('go');
   f.focus({preventScroll:true});
 }
 function mapHTML(){
-  const v=opts.map==='bonus'&&!bonusOpen()?'keer':opts.map;
+  const v=opts.map==='delen'?'delen':'keer';
   if(v==='bonus'){
     // rows 11,12 ; cols 1..12, keer and delen side by side? keep keer
     let h=`<div class="map" style="grid-template-columns:44px repeat(12,1fr)"><span class="h"></span>${Array.from({length:12},(_,i)=>`<span class="h">${i+1}</span>`).join('')}`;
@@ -272,8 +277,9 @@ function mapHTML(){
     for(const t of [11,12]){h+=`<span class="h">:${t}</span>`;for(let a=1;a<=12;a++)h+=`<span class="c l${level(dKey(a,t))}" title="${a*t} : ${t}">${a*t}</span>`}
     return h+'</div>';
   }
+  const M=opts.max;
   let h=`<div class="map" style="grid-template-columns:44px repeat(10,1fr)"><span class="h">${v==='keer'?'×':':'}</span>${Array.from({length:10},(_,i)=>`<span class="h">${i+1}</span>`).join('')}`;
-  for(let r=1;r<=10;r++){
+  for(let r=1;r<=M;r++){
     h+=`<span class="h">${v==='keer'?r:': '+r}</span>`;
     for(let c=1;c<=10;c++){
       const k=v==='keer'?kKey(r,c):dKey(c,r);
@@ -307,7 +313,7 @@ function startSprint(){
   app.innerHTML=`
   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
     <button class="btn" id="stopb">← Stoppen <kbd>Esc</kbd></button>
-    <span class="muted"><b>${MODES[opts.mode]}</b>${opts.bonus?' · bonus 11 en 12':''} · record ${S.rec}</span></div>
+    <span class="muted"><b>${MODES[opts.mode]}</b> · ${lvlLabel()} · record ${S.rec}</span></div>
   <section class="panel sprint">
     <div class="tcol"><div class="tower" id="tower"></div><div class="cnt" id="cnt">0</div></div>
     <div class="main">
@@ -350,7 +356,7 @@ function record(key,ok,ms){
   s.n++;
   if(ok){
     s.lw=false;s.s++;s.t=[...(s.t||[]),ms].slice(-15);
-    const nx=NEXT[s.e];
+    const nx=nextStep(s.e);
     if(nx&&s.s>=nx.need&&med(s.t.slice(-nx.need))<=nx.ms){s.e=nx.to;s.s=0;s.t=[]}
   }else{s.s=0;s.w++;s.t=[];s.lw=true}
   stats[key]=s;
@@ -397,7 +403,7 @@ function end(){
   const misses=[...new Set(S.wrong)];
   app.innerHTML=`
   <section class="panel result">
-    <span class="label">${MODES[opts.mode]}${opts.bonus?' · bonus 11 en 12':''}</span>
+    <span class="label">${MODES[opts.mode]} · ${lvlLabel()}</span>
     <span class="big">${S.good}</span>
     <h2>${msg}</h2>
     <p class="muted">${S.good} goed, ${S.wrong.length} fout in 1 minuut · record: ${recs[key]||0}</p>
