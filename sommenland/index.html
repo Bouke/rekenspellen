@@ -325,9 +325,24 @@ function lijnSVG(h){
 const helpHTML=hp=>hp.kind==='rek'?rekHTML(hp.segs):lijnSVG(hp);
 
 /* ================= voorlezen ================= */
+/* Getallen als woorden: anders leest de iPad "3 min" voor als "3 minuten". */
+const NUM=['nul','één','twee','drie','vier','vijf','zes','zeven','acht','negen','tien','elf','twaalf','dertien','veertien','vijftien','zestien','zeventien','achttien','negentien'];
+const TENS=['','','twintig','dertig','veertig','vijftig','zestig','zeventig','tachtig','negentig','honderd'];
+function woord(n){
+  if(n<20)return NUM[n];
+  const t=Math.floor(n/10),e=n%10;
+  if(!e)return TENS[t];
+  const ew=e===1?'een':NUM[e];
+  return ew+(ew.endsWith('e')?'ën':'en')+TENS[t];
+}
 function speakText(q){
-  if(q.story)return q.story;
-  return q.parts.map(p=>p==='+'?'plus':p===MINUS?'min':p==='='?'is':p==='?'?'hoeveel':String(p)).join(' ');
+  if(q.story)return q.story.replace(/\d+/g,m=>woord(+m));
+  const w=p=>p==='+'?'plus':p===MINUS?'min':p==='='?'is':p==='?'?'hoeveel':woord(+p);
+  const P=q.parts;
+  let zin;
+  if(P[3]==='='&&P[4]==='?')zin=`Hoeveel is ${w(P[0])} ${w(P[1])} ${w(P[2])}?`;
+  else zin=P.map(w).join(' ')+'?';
+  return zin.charAt(0).toUpperCase()+zin.slice(1);
 }
 let nlVoice=null;
 function pickVoice(){try{const vs=speechSynthesis.getVoices();nlVoice=vs.find(v=>/^nl[-_]NL/i.test(v.lang))||vs.find(v=>/^nl/i.test(v.lang))||null}catch(e){}}
