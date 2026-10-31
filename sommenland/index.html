@@ -70,7 +70,7 @@ button:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
 .stars .off{color:var(--line)}
 /* world patterns (decorative band) */
 .pat-zebra{background:repeating-linear-gradient(120deg,#1e1e1e 0 12px,#f2f2f2 12px 24px)}
-.pat-monster{background:radial-gradient(circle at 10px 9px,#ffd23f 5px,transparent 6px) 0 0/40px 18px,radial-gradient(circle at 30px 9px,#3ec7ff 5px,transparent 6px) 0 0/40px 18px,#7a4fd6}
+.pat-monster{background:repeating-linear-gradient(90deg,#ffd23f 0 22px,#2f5fa8 22px 44px)}
 .pat-steen{background:linear-gradient(#0003 0 0) 0 8px/100% 2px no-repeat,repeating-linear-gradient(90deg,#0003 0 2px,transparent 2px 30px) 0 0/30px 8px repeat-x,repeating-linear-gradient(90deg,#0003 0 2px,transparent 2px 30px) 15px 10px/30px 8px repeat-x,#e05544}
 .pat-politie{background:repeating-linear-gradient(90deg,#1f5fbf 0 18px,#ffffff 18px 36px)}
 .pat-maan{background:radial-gradient(circle at 8px 6px,#fff 1.5px,transparent 2px) 0 0/34px 18px,radial-gradient(circle at 24px 13px,#ffe9a8 1.5px,transparent 2px) 0 0/34px 18px,#1b2547}
@@ -183,9 +183,9 @@ const WORLDS=[
  {name:'De Zebraweide',col:'--w1',pat:'zebra',range:'tot 10',intro:'Help de zebra\'s met tellen in de wei.',
   plus:(a,b)=>`Zebra heeft ${a} knuffels. Ze krijgt er ${b} bij. Hoeveel knuffels heeft ze nu?`,
   min:(a,b)=>`Zebra heeft ${a} wortels. Ze eet er ${b} op. Hoeveel wortels zijn er nog?`},
- {name:'De Monstertjesvallei',col:'--w2',pat:'monster',range:'tot 20',intro:'Vang de monstertjes. Tot 20, zonder over de 10.',
-  plus:(a,b)=>`Je hebt ${a} monstertjes gevangen. Je vangt er nog ${b}. Hoeveel heb je er nu?`,
-  min:(a,b)=>`Je hebt ${a} monstertjes. Er rennen er ${b} weg. Hoeveel heb je er nog?`},
+ {name:'De Minionsfabriek',col:'--w2',pat:'monster',range:'tot 20',intro:'Help de minions in de fabriek. Tot 20, zonder over de 10.',
+  plus:(a,b)=>`Er werken ${a} minions in de fabriek. Er komen er ${b} bij. Hoeveel minions zijn er nu?`,
+  min:(a,b)=>`De minions hebben ${a} bananen. Ze eten er ${b} op. Hoeveel bananen zijn er nog?`},
  {name:'Steentjesstad',col:'--w3',pat:'steen',range:'tot 20, over de 10',intro:'Bouw de stad. Nu gaan de sommen over de 10 heen.',
   plus:(a,b)=>`Je toren is ${a} steentjes hoog. Je zet er ${b} bovenop. Hoe hoog is de toren nu?`,
   min:(a,b)=>`Je hebt ${a} steentjes. Je broer pakt er ${b}. Hoeveel heb je er nog?`},
