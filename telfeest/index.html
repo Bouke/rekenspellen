@@ -74,8 +74,15 @@ button:focus-visible{outline:4px solid var(--acc);outline-offset:3px}
 .die i{width:28px;height:28px;border-radius:50%;background:#3a2b4f;place-self:center;visibility:hidden}
 .die i.on{visibility:visible}
 .cloud{font-size:120px;line-height:1}
-.nests{display:flex;gap:28px;align-items:stretch;flex-wrap:wrap;justify-content:center}
-.nest{min-width:220px;min-height:180px;border-radius:30px;background:var(--soft);border:4px solid var(--line);display:flex;align-items:center;justify-content:center;padding:10px}
+.tree{display:flex;flex-direction:column;align-items:center;width:100%;max-width:760px;color:var(--muted)}
+.total{position:relative;background:var(--panel);border:4px solid var(--acc);border-radius:26px;padding:16px 18px 12px;min-width:240px;display:flex;flex-direction:column;align-items:center;gap:6px;transition:opacity .6s}
+.total.ghost .objs{opacity:.3}
+.num{font:700 40px/1 var(--body);color:var(--ink);background:var(--soft);border-radius:999px;padding:4px 18px}
+.num.q{color:var(--acc);border:3px dashed var(--acc)}
+.branches{width:60%;height:50px;display:block}
+.nests{display:flex;gap:28px;align-items:stretch;flex-wrap:nowrap;justify-content:center;width:100%}
+.nest{flex:1;max-width:330px;min-height:170px;border-radius:30px;background:var(--soft);border:4px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;padding:12px}
+.cloud.covered{font-size:110px;animation:flyin .5s ease-out both}
 .answers{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 .ans{min-width:150px;min-height:130px;border-radius:26px;border:4px solid var(--line);background:var(--panel);font:700 70px var(--body);box-shadow:0 6px 0 var(--line);transition:transform .1s}
 .ans:active{transform:translateY(4px);box-shadow:0 2px 0 var(--line)}
@@ -218,10 +225,31 @@ const GAMES={
       hint:()=>countAll()};
   },
   splits(t,L){
-    const n=R(3,L.split),k=R(1,n-1),ans=n-k;
-    return{ans,opts:opts3(ans,0,n),speak:`Er zijn ${w(n)} ${t.noun[1]}. In dit mandje ${k===1?'zit':'zitten'} er ${w(k)}. Hoeveel zitten er onder de wolk?`,
-      scene:`<div class="nests"><div class="nest"><div class="objs">${objsHTML(t,k)}</div></div><div class="nest" id="hid"><span class="cloud">☁️</span></div></div>`,
-      hint:()=>{const h=document.getElementById('hid');if(h){h.innerHTML=`<div class="objs">${objsHTML(t,ans,'new')}</div>`;say('Kijk, tel ze maar!');setTimeout(()=>{if(h.isConnected)h.innerHTML='<span class="cloud">☁️</span>'},2200)}}};
+    /* splitsboom zoals op school: bovenaan alles, daaronder twee mandjes; één mandje zit onder een wolk */
+    const n=R(3,L.split),k=R(1,n-1),ans=n-k,sz=Math.min(objSize(n),60);
+    const objs=(m,cls='')=>Array.from({length:m},()=>`<span class="obj ${cls}" style="font-size:${sz}px">${t.e}</span>`).join('');
+    return{ans,opts:opts3(ans,0,n),
+      speak:`Hier zijn ${w(n)} ${t.noun[1]}. ${w(k).replace(/^./,c=>c.toUpperCase())} ${k===1?'gaat':'gaan'} in het mandje. De rest verstopt zich onder de wolk. Hoeveel ${t.noun[1]} zitten er onder de wolk?`,
+      scene:`<div class="tree">
+        <div class="total" id="total"><span class="num">${n}</span><div class="objs">${objs(n)}</div></div>
+        <svg class="branches" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M200 0 L90 60 M200 0 L310 60" stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="none"/></svg>
+        <div class="nests">
+          <div class="nest" id="left"><span class="num">${k}</span><div class="objs" id="lobjs"></div></div>
+          <div class="nest" id="hid"><span class="num q">?</span><div class="objs" id="robjs"></div></div>
+        </div></div>`,
+      after:()=>{
+        S.locked=true;
+        const tot=document.getElementById('total'),lo=document.getElementById('lobjs'),ro=document.getElementById('robjs');
+        setTimeout(()=>{ if(!lo||!lo.isConnected)return;
+          tot.classList.add('ghost');
+          lo.innerHTML=objs(k,'new');ro.innerHTML=objs(ans,'new');
+          setTimeout(()=>{ if(!ro.isConnected)return;
+            document.getElementById('left').classList.add('glow');
+            ro.innerHTML='<span class="cloud covered">☁️</span>';S.locked=false;
+          },1300);
+        },1600);
+      },
+      hint:()=>{const ro=document.getElementById('robjs');if(ro){ro.innerHTML=objs(ans,'new');say('Kijk, tel ze maar!');setTimeout(()=>{if(ro.isConnected)ro.innerHTML='<span class="cloud covered">☁️</span>'},2400)}}};
   }
 };
 function diceHTML(a,b){return `<div class="dice">${die(a)}${b?die(b):''}</div>`}
@@ -271,6 +299,7 @@ function ask(queue){
   if(q.countable)setupCount();
   if(q.flash)showDice(q.flash.a,q.flash.b,2200);
   if(q.anim)runAnim(q.anim);
+  if(q.after)q.after();
   say(q.speak,queue);
 }
 function setupCount(){
