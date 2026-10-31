@@ -793,13 +793,32 @@ function result(){
 }
 /* ---- voortgang bewaren / herstellen ---- */
 const IO_APP='BK',IO_NAME='Breukenklimmer',IO_NAMES={BK:'Breukenklimmer',TS:'Tafelsprint'};
-function ioEncode(){const j=JSON.stringify(Object.assign({app:IO_APP,v:1,t:Date.now()},getState()));return IO_APP+'1:'+btoa(unescape(encodeURIComponent(j)))}
-function ioDecode(s){
+/* Code-formaat v2: deflate + base32 (Crockford). Hoofdletters/kleine letters maken niet uit,
+   dus een code overleeft autocorrectie en hoofdletter-gedoe. v1 (base64) wordt nog geaccepteerd. */
+const B32='0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function b32enc(u8){let out='',buf=0,bits=0;for(const b of u8){buf=(buf<<8)|b;bits+=8;while(bits>=5){out+=B32[(buf>>>(bits-5))&31];bits-=5}buf&=(1<<bits)-1}if(bits)out+=B32[(buf<<(5-bits))&31];return out}
+function b32dec(s){const out=[];let buf=0,bits=0;for(const ch of s.toUpperCase().replace(/[IL]/g,'1').replace(/O/g,'0')){const v=B32.indexOf(ch);if(v<0)throw 0;buf=(buf<<5)|v;bits+=5;if(bits>=8){out.push((buf>>>(bits-8))&255);bits-=8}buf&=(1<<bits)-1}return new Uint8Array(out)}
+async function pipe(u8,Stream){const s=new Blob([u8]).stream().pipeThrough(new Stream('deflate-raw'));return new Uint8Array(await new Response(s).arrayBuffer())}
+async function ioEncode(){
+  const raw=new TextEncoder().encode(JSON.stringify(Object.assign({app:IO_APP,v:2,t:Date.now()},getState())));
+  if(typeof CompressionStream==='function'){try{return IO_APP+'2:Z'+b32enc(await pipe(raw,CompressionStream))}catch(e){}}
+  return IO_APP+'2:R'+b32enc(raw);
+}
+async function ioDecode(s){
   s=(s||'').replace(/\s/g,'');
-  const m=s.match(/^([A-Z]{2})1:([A-Za-z0-9+/=]+)$/);
+  const m=s.match(/^([A-Za-z]{2})([12]):(.+)$/);
   if(!m)throw new Error('Dit is geen geldige voortgangscode. Kopieer de hele code, inclusief het begin.');
-  if(m[1]!==IO_APP)throw new Error(`Deze code hoort bij ${IO_NAMES[m[1]]||'een ander spel'}, niet bij ${IO_NAME}.`);
-  let d;try{d=JSON.parse(decodeURIComponent(escape(atob(m[2]))))}catch(e){throw new Error('De code is niet compleet of beschadigd. Kopieer hem opnieuw.')}
+  const app=m[1].toUpperCase();
+  if(app!==IO_APP)throw new Error(`Deze code hoort bij ${IO_NAMES[app]||'een ander spel'}, niet bij ${IO_NAME}.`);
+  let d;
+  try{
+    if(m[2]==='1'){d=JSON.parse(decodeURIComponent(escape(atob(m[3]))))}
+    else{
+      const kind=m[3][0].toUpperCase(),bytes=b32dec(m[3].slice(1));
+      const raw=kind==='Z'?await pipe(bytes,DecompressionStream):bytes;
+      d=JSON.parse(new TextDecoder().decode(raw));
+    }
+  }catch(e){throw new Error(m[2]==='1'?'Deze oude code is beschadigd (misschien zijn hoofdletters veranderd). Maak een nieuwe code in het spel.':'De code is niet compleet of beschadigd. Kopieer hem opnieuw.')}
   if(!d||d.app!==IO_APP)throw new Error('De code is niet compleet of beschadigd.');
   return d;
 }
@@ -811,11 +830,11 @@ function ioShow(){
     back.innerHTML=`<div class="io" role="dialog" aria-modal="true" aria-labelledby="io-t">
       <h2 id="io-t">Voortgang bewaren of herstellen</h2>
       <section><h3>Bewaren</h3><p class="muted">Kopieer deze code en bewaar hem, bijvoorbeeld in Notities of in een mail aan jezelf.</p>
-        <textarea id="io-out" readonly rows="3" aria-label="Voortgangscode"></textarea>
+        <textarea id="io-out" readonly rows="3" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" aria-label="Voortgangscode"></textarea>
         <div class="io-row"><button class="btn main" id="io-copy">Kopieer code</button><button class="btn" id="io-file">Bewaar als bestand</button></div>
         <p class="io-msg" id="io-m1" role="status"></p></section>
       <section><h3>Herstellen</h3><p class="muted">Plak een bewaarde code of kies een bewaard bestand. De voortgang wordt samengevoegd met wat er al staat, dus je raakt niets kwijt.</p>
-        <textarea id="io-in" rows="3" placeholder="Plak hier je code" aria-label="Code om te herstellen"></textarea>
+        <textarea id="io-in" rows="3" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" placeholder="Plak hier je code" aria-label="Code om te herstellen"></textarea>
         <div class="io-row"><button class="btn main" id="io-load">Herstel voortgang</button><button class="btn" id="io-pickb">Kies bestand</button><input type="file" id="io-pick" accept=".txt,text/plain" hidden></div>
         <p class="io-msg" id="io-m2" role="status"></p></section>
       <div class="io-row end"><button class="btn" id="io-close">Sluiten <kbd>Esc</kbd></button></div></div>`;
@@ -826,7 +845,7 @@ function ioShow(){
     $('io-file').onclick=()=>{try{const d=new Date(),ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([$('io-out').value],{type:'text/plain'}));a.download=`${IO_NAME}-voortgang-${ds}.txt`;document.body.appendChild(a);a.click();a.remove();
       msg('io-m1','Bestand bewaard (kijk in Downloads of de Bestanden-app).',true)}catch(e){msg('io-m1','Bewaren als bestand lukte niet. Gebruik Kopieer code.',false)}};
-    const doImport=txt=>{try{const d=ioDecode(txt);mergeIn(d);saveLocal();pushCloud();ioChanged=true;$('io-out').value=ioEncode();msg('io-m2','Hersteld! Je voortgang is bijgewerkt.',true)}catch(e){msg('io-m2',e.message||'Herstellen lukte niet.',false)}};
+    const doImport=async txt=>{try{const d=await ioDecode(txt);mergeIn(d);saveLocal();pushCloud();ioChanged=true;$('io-out').value=await ioEncode();msg('io-m2','Hersteld! Je voortgang is bijgewerkt.',true)}catch(e){msg('io-m2',e.message||'Herstellen lukte niet.',false)}};
     $('io-load').onclick=()=>{if(!$('io-in').value.trim())return msg('io-m2','Plak eerst een code.',false);doImport($('io-in').value)};
     $('io-pickb').onclick=()=>$('io-pick').click();
     $('io-pick').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('io-in').value=String(r.result).trim();doImport(r.result)};r.readAsText(f);e.target.value=''};
@@ -840,7 +859,7 @@ function ioShow(){
     });
   }
   ioOpener=document.activeElement;ioChanged=false;
-  document.getElementById('io-out').value=ioEncode();
+  const out=document.getElementById('io-out');out.value='';ioEncode().then(v=>{out.value=v});
   document.getElementById('io-in').value='';
   document.getElementById('io-m1').textContent='';document.getElementById('io-m2').textContent='';
   back.hidden=false;
