@@ -80,7 +80,12 @@ kbd{font:700 12px var(--body);border:1.5px solid currentColor;border-bottom-widt
 
 /* sprint */
 .sprint{display:grid;gap:18px}
-@media (min-width:860px){.sprint{grid-template-columns:110px 1fr}}
+@media (min-width:860px){.sprint{grid-template-columns:110px 1fr minmax(240px,300px);align-items:center}}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.pad button{min-height:72px;border-radius:14px;border:2px solid var(--line);background:var(--chalk);color:var(--ink);font:700 32px var(--body);-webkit-tap-highlight-color:transparent}
+.pad button.down{transform:scale(.94);background:var(--line)}
+.pad .ok{background:var(--good);border-color:var(--good);color:#fff}
+.pad .del{font-size:26px}
 .tower{position:relative;height:460px;display:flex;flex-direction:column-reverse;gap:1px;border-bottom:4px solid var(--line);padding:0 10px}
 .tower .b{flex:1;background:var(--chalk);border-radius:2px;min-height:1px}
 .tower .b.on{background:var(--acc);box-shadow:inset 0 -2px 0 rgba(0,0,0,.18)}
@@ -318,18 +323,31 @@ function startSprint(){
     <div class="tcol"><div class="tower" id="tower"></div><div class="cnt" id="cnt">0</div></div>
     <div class="main">
       <div class="clock"><div class="bar"><div class="fill" id="fill"></div></div><span class="sec" id="sec">${SPRINT}</span></div>
-      <div class="sum" id="sum"><span id="q"></span><span>=</span><input id="ans" inputmode="numeric" autocomplete="off" aria-label="Antwoord"></div>
+      <div class="sum" id="sum"><span id="q"></span><span>=</span><input id="ans" inputmode="none" autocomplete="off" aria-label="Antwoord"></div>
       <div class="fbline" id="fb"></div>
       <div class="stats"><span>Goed: <b id="sg">0</b></span><span>Fout: <b id="sf">0</b></span></div>
-      <p class="hint">Typ het antwoord. Het gaat vanzelf door als je genoeg cijfers hebt getypt (of druk op <kbd>Enter</kbd>).</p>
+      <p class="hint">Tik of typ het antwoord. Het gaat vanzelf door als je genoeg cijfers hebt (of druk op ✓ / <kbd>Enter</kbd>).</p>
     </div>
+    <div class="pad" id="pad" aria-label="Cijfertoetsen">${[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join('')}<button type="button" class="del" data-k="del" aria-label="Wissen">⌫</button><button type="button" data-k="0">0</button><button type="button" class="ok" data-k="ok" aria-label="Klaar">✓</button></div>
   </section>`;
   document.getElementById('stopb').onclick=home;
   drawTower(false);
   const inp=document.getElementById('ans');
-  inp.addEventListener('input',()=>{
+  const onInput=()=>{
     const v=inp.value.replace(/\D/g,'').slice(0,3);if(v!==inp.value)inp.value=v;
     if(!S.busy&&v.length>=String(S.cur.ans).length)submit();
+  };
+  inp.addEventListener('input',onInput);
+  /* schermtoetsen: pointerdown voor snelheid, focus blijft op het antwoordvak */
+  document.getElementById('pad').addEventListener('pointerdown',e=>{
+    const b=e.target.closest('button');if(!b)return;e.preventDefault();
+    b.classList.add('down');setTimeout(()=>b.classList.remove('down'),110);
+    if(!S||S.busy||inp.readOnly)return;
+    const k=b.dataset.k;
+    if(k==='del')inp.value=inp.value.slice(0,-1);
+    else if(k==='ok'){if(inp.value)submit();return}
+    else{inp.value+=k;onInput()}
+    if(document.activeElement!==inp)inp.focus({preventScroll:true});
   });
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(inp.value)submit()}else if(e.key==='Escape'){home()}});
   ask();
