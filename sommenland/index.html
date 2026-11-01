@@ -546,7 +546,7 @@ function start(wi,li){
   S={wi,li,i:0,res:[],tries:0,mistakes:0,q:makeQ(wi,li),done:false,val:'',pop:-1,help:false};
   play();window.scrollTo(0,0);
 }
-function liveCounts(){return LEVELS.map((_,li)=>li===S.li?S.res.filter(Boolean).length:(best[K(S.wi,li)]||0))}
+function liveCounts(){return LEVELS.map((_,li)=>li===S.li?Math.max(S.res.filter(Boolean).length,best[K(S.wi,li)]||0):(best[K(S.wi,li)]||0))}
 function towerHTML(){const c=liveCounts();return `<span class="lab2">Jouw toren</span>${meterHTML(S.wi,c,{vert:true,cur:S.li,pop:S.pop})}<span class="cnt">${c.reduce((a,b)=>a+b,0)}</span>`}
 function eqHTML(q){
   if(q.parts)return `<div class="eq">${q.parts.map(p=>p==='?'?`<span class="slot" id="slot">?</span>`:`<span>${p}</span>`).join('')}</div>`;
@@ -649,7 +649,8 @@ function result(){
   <section class="card result">
     <span class="tag">${WORLDS[wi].name} · ${LEVELS[li].name}</span>
     <h2 style="font-family:var(--display);font-weight:400;font-size:30px">${msg}</h2>
-    ${starHTML(st)}
+    ${starHTML(stars[key]||0)}
+    ${st<(stars[key]||0)?`<p class="muted">Deze keer ${st} ${st===1?'ster':'sterren'}. Je beste score blijft staan!</p>`:''}
     <p>${good} van de ${QN} sommen goed.</p>
     <div style="width:min(100%,520px)">${meterHTML(wi,LEVELS.map((_,l)=>best[K(wi,l)]||0),{})}</div>
     <div class="row" style="justify-content:center"><button class="btn" id="again">Opnieuw</button>${nextLbl?`<button class="btn main" id="nxt">${nextLbl}</button>`:''}</div>

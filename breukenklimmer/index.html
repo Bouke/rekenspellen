@@ -658,7 +658,7 @@ function inputHTML(q){
     ${showW?'<p class="muted" style="text-align:center;font-size:14px">Vul ook de hele getallen in als het antwoord groter is dan 1.</p>':''}`;
 }
 function liveCounts(){
-  return G().levels.map((_,li)=>li===S.li?S.res.filter(Boolean).length:(best[K(game,S.wi,li)]||0));
+  return G().levels.map((_,li)=>li===S.li?Math.max(S.res.filter(Boolean).length,best[K(game,S.wi,li)]||0):(best[K(game,S.wi,li)]||0));
 }
 function towerHTML(){
   const counts=liveCounts(),w=G().worlds[S.wi];
@@ -791,7 +791,8 @@ function result(){
   <section class="card result">
     <span class="tag">${g.worlds[S.wi].name} · ${g.levels[S.li].boss?'Baasroute':'Route '+(S.li+1)}</span>
     <h2>${msg}</h2>
-    ${starHTML(st)}
+    ${starHTML(stars[key]||0)}
+    ${st<(stars[key]||0)?`<p class="muted">Deze keer ${st} ${st===1?'ster':'sterren'}. Je beste score blijft staan!</p>`:''}
     <p>${good} van de ${QN} grepen goed${S.mistakes?`, ${S.mistakes} keer misgegrepen`:''}${S.boss&&!S.timeout?`, ${fmt(S.timeLeft)} over op de klok`:''}.</p>
     <div style="width:min(100%,520px)">${meterHTML(S.wi,g.levels.map((_,li)=>best[K(game,S.wi,li)]||0),{})}</div>
     ${justUnlocked?'<p style="font-size:20px"><b>🎉 Alle routes op 3 sterren! Breukenklimmer 2 is vrijgespeeld.</b></p>':''}
