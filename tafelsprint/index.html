@@ -166,19 +166,27 @@ const med=a=>{if(!a||!a.length)return Infinity;const s=[...a].sort((x,y)=>x-y);r
 function speeds(){const M=Math.min(opts.max,10),f=(M-2)/8;return[Math.round(8000-3000*f),Math.round(6000-2500*f),Math.round(4000-1500*f)]}
 function nextStep(e){const sp=speeds();return{0:{need:3,ms:sp[0],to:3},3:{need:7,ms:sp[1],to:4},4:{need:15,ms:sp[2],to:5}}[e]}
 const secs=ms=>(ms/1000).toFixed(1).replace('.0','').replace('.',',');
+/* Kleuren gelden per niveau: s.got[kleur] = hoogste niveau (max 10) waarop die kleur gehaald is.
+   Op niveau M telt een kleur alleen als hij gehaald is op niveau >= M (daar gold dezelfde of een strengere tijd). */
+const lvlCap=()=>Math.min(opts.max,10);
 function norm(s){
-  if(s.e===undefined){
+  if(s.e===undefined){ /* allereerste versie: alleen groen */
     s.lw=s.n>0&&s.s===0;
     s.e=(s.s>=3&&med(s.t)<=5000)?3:0;
     if(s.e){s.s=0;s.t=[];s.lw=false}
   }
+  if(!s.got){ /* oude kleuren: tellen voor het niveau dat nu is ingesteld (en lager) */
+    s.got={};for(let c=3;c<=(s.e||0);c++)s.got[c]=lvlCap();
+  }
   return s;
 }
+function colorAt(s){let d=0;for(const c of [3,4,5])if((s.got[c]||0)>=lvlCap())d=c;return d}
 function level(key){
   const s=stats[key];
   if(!s||!s.n)return 0;
   norm(s);
-  if(s.e>=3)return s.e;
+  const d=colorAt(s);
+  if(d>=3)return d;
   return s.lw?1:2;
 }
 const WEIGHT=[2.5,7,3.5,0.7,0.4,0.25];
@@ -263,7 +271,7 @@ function home(focusSel){
       <div class="seg" id="maps"><button data-v="keer" aria-pressed="${opts.map==='keer'}">Keer</button><button data-v="delen" aria-pressed="${opts.map==='delen'}">Delen</button></div></div>
     <div class="mapwrap">${mapHTML()}</div>
     <div class="legend"><span><i style="background:var(--l0)"></i>Nog niet gedaan</span><span><i style="background:var(--l1)"></i>Laatst fout</span><span><i style="background:var(--l2)"></i>Bijna</span><span><i style="background:var(--l3)"></i>Zit erin (3× goed, binnen ${secs(speeds()[0])} s)</span><span><i class="gold"></i>Goud (nog 7× goed, binnen ${secs(speeds()[1])} s)</span><span><i class="rainbow"></i>Regenboog (nog 15× goed, binnen ${secs(speeds()[2])} s)</span></div>
-    <p class="muted" style="font-size:14px;margin:0">Een kleur die je hebt, blijf je houden. Een fout zet alleen de teller naar de volgende kleur weer op 0. De tijden horen bij je niveau (${lvlLabel()}).</p>
+    <p class="muted" style="font-size:14px;margin:0">Een kleur die je hebt, blijf je houden. Een fout zet alleen de teller naar de volgende kleur weer op 0. Kleuren gelden per niveau: wat je op een makkelijker niveau haalde, moet je op een moeilijker niveau opnieuw halen met de snellere tijden.</p>
   </section>
   <p class="io-open"><button class="btn" id="io-open">Voortgang bewaren of herstellen</button></p>`;
   app.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>{opts.mode=b.dataset.m;store('ts-opts',opts);home(`#modes [data-m="${b.dataset.m}"]`)});
@@ -370,12 +378,12 @@ function ask(){
   document.getElementById('fb').textContent='';document.getElementById('fb').className='fbline';
 }
 function record(key,ok,ms){
-  const s=norm(stats[key]||{n:0,s:0,w:0,t:[],e:0,lw:false});
+  const s=norm(stats[key]||{n:0,s:0,w:0,t:[],e:0,lw:false,got:{}});
   s.n++;
   if(ok){
     s.lw=false;s.s++;s.t=[...(s.t||[]),ms].slice(-15);
-    const nx=nextStep(s.e);
-    if(nx&&s.s>=nx.need&&med(s.t.slice(-nx.need))<=nx.ms){s.e=nx.to;s.s=0;s.t=[]}
+    const nx=nextStep(colorAt(s));
+    if(nx&&s.s>=nx.need&&med(s.t.slice(-nx.need))<=nx.ms){s.got[nx.to]=Math.max(s.got[nx.to]||0,lvlCap());s.e=Math.max(s.e||0,nx.to);s.s=0;s.t=[]}
   }else{s.s=0;s.w++;s.t=[];s.lw=true}
   stats[key]=s;
 }
